@@ -1,10 +1,12 @@
 #pragma once
 
-#include "include/openvr.h"
+#include <openvr.h>
 
 class OVROverlayController
 {
 public:
+	static OVROverlayController* getInstance();
+
 	OVROverlayController();
 	~OVROverlayController();
 

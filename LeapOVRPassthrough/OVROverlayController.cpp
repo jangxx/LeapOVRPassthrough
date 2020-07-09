@@ -1,6 +1,16 @@
 #include "stdafx.h"
 #include "OVROverlayController.h"
 
+OVROverlayController* s_shareInstance = nullptr;
+
+OVROverlayController * OVROverlayController::getInstance()
+{
+	if (s_shareInstance == nullptr) {
+		s_shareInstance = new OVROverlayController();
+	}
+
+	return s_shareInstance;
+}
 
 OVROverlayController::OVROverlayController()
 	: m_eLastHmdError( vr::VRInitError_None ),

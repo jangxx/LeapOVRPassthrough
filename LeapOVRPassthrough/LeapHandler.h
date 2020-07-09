@@ -5,12 +5,14 @@
 #include <map>
 
 extern "C" {
-	#include "include\LeapC.h"
+	#include <LeapC.h>
 }
 
 class LeapHandler
 {
 public:
+	static LeapHandler* getInstance();
+
 	LeapHandler();
 	~LeapHandler();
 

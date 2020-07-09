@@ -48,6 +48,17 @@ void printLeapRSError(eLeapRS result) {
 	std::cout << "LeapC Error: " << errorMap[result] << " " << result << std::endl;
 }
 
+LeapHandler* s_sharedInstance = nullptr;
+
+LeapHandler* LeapHandler::getInstance()
+{
+	if (s_sharedInstance == nullptr) {
+		s_sharedInstance = new LeapHandler();
+	}
+
+	return s_sharedInstance;
+}
+
 LeapHandler::LeapHandler()
 {
 }
@@ -109,7 +120,7 @@ void LeapHandler::pollController()
 			std::cout << "Messages (" << msg.size << "):" << std::endl;
 			const LEAP_LOG_EVENTS* events = msg.log_events;
 
-			for (int i = 0; i < events->nEvents; i++) {
+			for (uint32_t i = 0; i < events->nEvents; i++) {
 				LEAP_LOG_EVENT evt = events->events[i];
 
 				std::cout << "[" << evt.timestamp << "] " << evt.message << std::endl;
