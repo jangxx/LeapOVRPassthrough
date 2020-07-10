@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "LeapHandler.h"
+#include "GraphicsManager.h"
 
 std::map<eLeapRS, std::string> errorMap = {
 	{ eLeapRS_Success, "Success" },
@@ -76,26 +77,40 @@ bool LeapHandler::openConnection()
 
 	eLeapRS result = LeapCreateConnection(NULL, &m_connection);
 
-	if (result == eLeapRS_Success) {
-		result = LeapOpenConnection(m_connection);
-		if (result == eLeapRS_Success) {
-			m_started = true;
-
-			m_pollingThread = std::thread([this]() {
-				this->pollController();
-			});
-			
-			return true;
-		} else {
-			printLeapRSError(result);
-			m_started = false;
-			return false;
-		}
-	} else {
+	if (result != eLeapRS_Success) {
 		printLeapRSError(result);
 		m_started = false;
 		return false;
 	}
+
+	result = LeapOpenConnection(m_connection);
+	if (result != eLeapRS_Success) {
+		printLeapRSError(result);
+		m_started = false;
+		return false;
+	}
+
+	LEAP_CONNECTION_MESSAGE msg;
+	result = LeapPollConnection(m_connection, 1000, &msg);
+	if (result != eLeapRS_Success) {
+		printLeapRSError(result);
+		m_started = false;
+		return false;
+	}
+
+	result = LeapSetPolicyFlags(m_connection, eLeapPolicyFlag_Images, 0);
+	if (result != eLeapRS_Success) {
+		printLeapRSError(result);
+		m_started = false;
+		return false;
+	}
+
+	m_started = true;
+	m_pollingThread = std::thread([this]() {
+		this->pollController();
+	});
+			
+	return true;
 }
 
 void LeapHandler::join()
@@ -113,12 +128,13 @@ void LeapHandler::pollController()
 	while (m_started) {
 		result = LeapPollConnection(m_connection, 1000, &msg);
 
-		std::cout << eventMsgMap[msg.type] << std::endl;
+		//std::cout << eventMsgMap[msg.type] << std::endl;
 
 		switch (msg.type) {
-		case eLeapEventType_LogEvents:
-			std::cout << "Messages (" << msg.size << "):" << std::endl;
+		case eLeapEventType_LogEvents: 
+		{
 			const LEAP_LOG_EVENTS* events = msg.log_events;
+			std::cout << "Messages (" << events->nEvents << "):" << std::endl;
 
 			for (uint32_t i = 0; i < events->nEvents; i++) {
 				LEAP_LOG_EVENT evt = events->events[i];
@@ -127,6 +143,15 @@ void LeapHandler::pollController()
 			}
 
 			break;
+		}
+		case eLeapEventType_Image: 
+		{
+			const LEAP_IMAGE_EVENT* evt = msg.image_event;
+			GraphicsManager* graphicsManager = GraphicsManager::getInstance();
+			graphicsManager->setFrame(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset, (uint8_t*)evt->image[1].data + evt->image[1].offset);
+			//evt->image[0].properties.
+			break;
+		}
 		}
 	}
 }
