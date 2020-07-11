@@ -1,6 +1,9 @@
 #pragma once
 
+#include <GL/glew.h>
+#include <GL/freeglut.h>
 #include <openvr.h>
+#include <iostream>
 
 class OVROverlayController
 {
@@ -12,10 +15,14 @@ public:
 
 	bool init();
 	void shutdown();
-	void enableRestart();
+	//void enableRestart();
+
+	void showOverlay();
+	void hideOverlay();
+	void setTexture(GLuint* id);
 
 	bool BHMDAvailable();
-	vr::IVRSystem* getVRSystem();
+	//vr::IVRSystem* getVRSystem();
 	vr::HmdError getLastHmdError();
 
 private:
@@ -31,6 +38,5 @@ private:
 	vr::HmdError m_eCompositorError;
 	vr::HmdError m_eOverlayError;
 	vr::VROverlayHandle_t m_ulOverlayHandle;
-	vr::VROverlayHandle_t m_ulOverlayThumbnailHandle;
 };
 

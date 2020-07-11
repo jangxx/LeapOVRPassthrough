@@ -34,7 +34,7 @@ void GraphicsManager::init()
 	for (int y = 0; y < m_height; y++) {
 		for (int x = 0; x < m_width; x++) {
 			int index = (y * m_width + x) * 1;
-			m_pixelData[index] = 255;
+			m_pixelData[index] = 100;
 			//m_pixelData[index + 1] = x & 0xFF;
 			//m_pixelData[index + 2] = y & 0xFF;
 		}
@@ -60,6 +60,10 @@ void GraphicsManager::updateTexture()
 
 	glBindTexture(GL_TEXTURE_2D, m_videoTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, m_pixelData);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	//OVROverlayController* vrController = OVROverlayController::getInstance();
+	//vrController->setTexture(&m_videoTexture);
 }
 
 void GraphicsManager::setFrame(int width, int height, uint8_t* left_data, uint8_t* right_data)
@@ -68,7 +72,7 @@ void GraphicsManager::setFrame(int width, int height, uint8_t* left_data, uint8_
 	//std::cout << "width: " << width << " height: " << height << std::endl;
 
 	m_width = width;
-	m_height = height * 2;
+	m_height = height;
 
 	free(m_pixelData);
 	m_pixelData = (uint8_t*)malloc(m_width * m_height);

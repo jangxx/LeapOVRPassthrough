@@ -4,7 +4,8 @@
 #include "windows.h"
 #include <iostream>
 #include <GL/glew.h>
-#include <GL/freeglut.h>
+#include <GLFW/glfw3.h>
+//#include <GL/freeglut.h>
 
 #include "LeapHandler.h"
 #include "OVROverlayController.h"
@@ -65,6 +66,8 @@ static const GLfloat g_quad_uvs_buffer_data[] = {
 	1.0f,  1.0f,
 	1.0f, 0.0f,
 };
+
+GLuint testTex;
 
 void dbg_init() {
 	glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -137,9 +140,11 @@ void dbg_display() {
 
 	glUseProgram(dbg_shaderProgram);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE0, graphicsManager->getVideoTexture());
-	glUniform1i(dbg_textureSamplerID, 0);
+	//glActiveTexture(GL_TEXTURE0);
+	//glUniform1i(dbg_textureSamplerID, 0);
+	//glBindTexture(GL_TEXTURE_2D, graphicsManager->getVideoTexture());
+	//glBindTexture(GL_TEXTURE_2D, testTex);
+	
 
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, dbg_fullscreenQuadBuffer);
@@ -164,6 +169,35 @@ void dbg_display() {
 	glFlush();
 }
 
+GLuint createTestTexture(int width = 512, int height = 512) {
+	uint8_t* pixelData = (uint8_t*)malloc(width * height * 4);
+
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int index = (y * width + x) * 4;
+			pixelData[index] = x & 0xFF;
+			pixelData[index + 1] = 0;
+			pixelData[index + 2] = 0;
+			pixelData[index + 3] = 255;
+		}
+	}
+
+	GLuint resultTexture;
+	glGenTextures(1, &resultTexture);
+	glBindTexture(GL_TEXTURE_2D, resultTexture);
+
+	//GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_RED };
+	//glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	return resultTexture;
+}
+
 void dgb_redrawTimer(int value) {
 	glutPostRedisplay();
 	glutTimerFunc(1000 / 30, dgb_redrawTimer, value + 1);
@@ -175,33 +209,67 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	int /*cmdShow*/)
 {
 
-	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+	/*glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(500, 500);
 	glutInitWindowPosition(100, 100);
 	glutCreateWindow("Hello OpenGL");
-	glutDisplayFunc(dbg_display);
+	glutDisplayFunc(dbg_display);*/
 
-	//OVROverlayController* vrController = OVROverlayController::getInstance();
+	glfwInit();
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	GLFWwindow* window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
+	glfwMakeContextCurrent(window);
+
+	OVROverlayController* vrController = OVROverlayController::getInstance();
 	LeapHandler* leapHandler = LeapHandler::getInstance();
 	GraphicsManager* graphicsManager = GraphicsManager::getInstance();
 
 	graphicsManager->init();
 
-	//vrController->init();
-	leapHandler->openConnection();
+	glfwSwapInterval(1);
+
+	vrController->init();
+	//leapHandler->openConnection();
+
+	testTex = createTestTexture();
+	
 
 	dbg_init();
-	glutTimerFunc(1000 / 60, dgb_redrawTimer, 0);
-	glutMainLoop();
+	/*glutTimerFunc(1000 / 60, dgb_redrawTimer, 0);*/
 
-	leapHandler->join();
+	vrController->setTexture(&testTex);
+	//vrController->showOverlay();
+
+	//glutMainLoop();
+
+	while (!glfwWindowShouldClose(window)) {
+		int width, height;
+
+		glfwGetFramebufferSize(window, &width, &height);
+
+		glViewport(0, 0, width, height);
+
+		dbg_display();
+
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	glfwDestroyWindow(window);
+
+	//leapHandler->join();
+
+	glfwTerminate();
+
+	//while (true) {}
 
     return 0;
 }
 
 int main(int argc, char** argv)
 {
-	glutInit(&argc, argv);
+	//glutInit(&argc, argv);
 
 	return WinMain(GetModuleHandle(NULL), NULL, GetCommandLineA(), SW_SHOWNORMAL);
 }

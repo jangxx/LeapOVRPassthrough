@@ -60,7 +60,9 @@ LeapHandler* LeapHandler::getInstance()
 	return s_sharedInstance;
 }
 
-LeapHandler::LeapHandler()
+LeapHandler::LeapHandler() :
+	m_brightUpperPixelsRingbuffer(std::vector<uint32_t>(50)),
+	m_lastSwipeDetected( steady_clock::now() )
 {
 }
 
@@ -98,7 +100,7 @@ bool LeapHandler::openConnection()
 		return false;
 	}
 
-	result = LeapSetPolicyFlags(m_connection, eLeapPolicyFlag_Images, 0);
+	result = LeapSetPolicyFlags(m_connection, eLeapPolicyFlag_Images | eLeapPolicyFlag_OptimizeHMD, 0);
 	if (result != eLeapRS_Success) {
 		printLeapRSError(result);
 		m_started = false;
@@ -125,6 +127,8 @@ void LeapHandler::pollController()
 	eLeapRS result;
 	LEAP_CONNECTION_MESSAGE msg;
 
+	int blubb = 0;
+
 	while (m_started) {
 		result = LeapPollConnection(m_connection, 1000, &msg);
 
@@ -148,10 +152,80 @@ void LeapHandler::pollController()
 		{
 			const LEAP_IMAGE_EVENT* evt = msg.image_event;
 			GraphicsManager* graphicsManager = GraphicsManager::getInstance();
+
+			updateBrightUpperPixels(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset);
+
+			//std::cout << countLastBUPIncreasing() << std::endl;
+
+			if (countLastBUPIncreasing() >= 5) {
+				auto cur_ts = steady_clock::now();
+
+				if (std::chrono::duration_cast<std::chrono::seconds>(cur_ts - m_lastSwipeDetected) > 2 * std::chrono::seconds()) {
+					m_lastSwipeDetected = cur_ts;
+
+					// SWIPE DETECTED
+				}
+			}
+
 			graphicsManager->setFrame(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset, (uint8_t*)evt->image[1].data + evt->image[1].offset);
 			//evt->image[0].properties.
 			break;
 		}
 		}
 	}
+}
+
+void LeapHandler::updateBrightUpperPixels(int width, int height, uint8_t * image)
+{
+	const uint8_t threshold = 100;
+
+	uint32_t count = 0;
+
+	for (int y = 0; y < height / 2; y++) {
+		for (int x = 0; x < width; x++) {
+			int i = y * width + x;
+
+			if (image[i] >= threshold) {
+				count++;
+			}
+		}
+	}
+
+	//std::cout << "count: " << count << std::endl;
+
+	m_brightUpperPixelsRingbuffer[m_bupRBNextIndex] = count;
+	m_bupRBNextIndex++;
+
+	if (m_bupRBNextIndex == m_brightUpperPixelsRingbuffer.size()) {
+		m_bupRBNextIndex = 0;
+	}
+}
+
+uint32_t LeapHandler::countLastBUPIncreasing()
+{
+	const uint32_t threshold = 30000;
+
+	uint32_t result = 0;
+
+	uint32_t last = UINT32_MAX;
+
+	for (int i = 1; i <= m_brightUpperPixelsRingbuffer.size(); i++) {
+		int index = m_bupRBNextIndex - i;
+		index = (index < 0) ? index + m_brightUpperPixelsRingbuffer.size() : index;
+
+		uint32_t value = m_brightUpperPixelsRingbuffer[index];
+
+		if (value < threshold) {
+			break;
+		}
+
+		if (value < last) {
+			result++;
+			last = value;
+		} else {
+			break;
+		}
+	}
+
+	return result;
 }

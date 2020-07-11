@@ -4,6 +4,8 @@
 #include <iostream>
 #include <mutex>
 
+#include "OVROverlayController.h"
+
 class GraphicsManager
 {
 public:
