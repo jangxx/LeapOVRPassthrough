@@ -1,7 +1,15 @@
+#define GLFW_EXPOSE_NATIVE_WIN32
+
 #include "windows.h"
+#include "resource.h"
+#include <CommCtrl.h>
 #include <iostream>
+#include <vector>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+
+#include <lodepng.h>
 
 #include "LeapHandler.h"
 #include "OVROverlayController.h"
@@ -13,6 +21,9 @@ GLuint display_fullscreenQuadUVs;
 GLuint display_vertexShader, display_fragmentShader;
 GLuint display_shaderProgram;
 GLuint display_textureSamplerID;
+WNDPROC defaultWndProc;
+GLFWwindow* globalWindow;
+bool globalKeepRunning = true;
 
 const char* display_vertexShaderCode = R"""(
 #version 420 core
@@ -61,6 +72,30 @@ static const GLfloat g_quad_uvs_buffer_data[] = {
 	1.0f,  1.0f,
 	1.0f, 0.0f,
 };
+
+GLFWimage loadResource(HINSTANCE hInstance, int id) {
+	GLFWimage result = { 0 };
+
+	HRSRC hResource = FindResource(hInstance, MAKEINTRESOURCE(id), L"PNG");
+	DWORD imageSize = SizeofResource(hInstance, hResource);
+
+	const void* data = LockResource(LoadResource(hInstance, hResource));
+
+	std::vector<unsigned char> pngfile((unsigned char*)data, (unsigned char*)data + imageSize);
+
+	std::vector<uint8_t> pixels;
+	unsigned width, height;
+
+	lodepng::decode(pixels, width, height, pngfile);
+
+	std::vector<unsigned char>* pixelData = new std::vector<unsigned char>(pixels);
+
+	result.width = width;
+	result.height = height;
+	result.pixels = pixelData->data();
+
+	return result;
+}
 
 void display_init() {
 	GLint Result = GL_FALSE;
@@ -118,7 +153,7 @@ void display_init() {
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_uvs_buffer_data), g_quad_uvs_buffer_data, GL_STATIC_DRAW);
 }
 
-void display_display() {
+void display_render() {
 	GraphicsManager* graphicsManager = GraphicsManager::getInstance();
 
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -144,24 +179,74 @@ void display_display() {
 	glFlush();
 }
 
-int APIENTRY WinMain(HINSTANCE /*hInstance*/,
+void addTrayIcon(HINSTANCE hInstance, HWND hWnd, UINT uID) {
+	NOTIFYICONDATA nid;
+	nid.hWnd = hWnd;
+	nid.uID = uID;
+	nid.uFlags = NIF_TIP | NIF_MESSAGE | NIF_ICON;
+	nid.uCallbackMessage = WM_APP;
+	nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
+	wcscpy_s(nid.szTip, L"Leap Motion SteamVR Overlay");
+	
+	Shell_NotifyIcon(NIM_ADD, &nid);
+}
+
+void removeTrayIcon(HWND hWnd, UINT uID) {
+	NOTIFYICONDATA nid;
+	nid.hWnd = hWnd;
+	nid.uID = uID;
+
+	Shell_NotifyIcon(NIM_DELETE, &nid);
+}
+
+static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
+	switch (uMsg) {
+		case WM_APP:
+			switch (lParam) {
+				case WM_LBUTTONDBLCLK:
+					glfwShowWindow(globalWindow);
+					return 0;
+				case WM_RBUTTONUP:
+					MessageBox(hWnd, L"asd", L"right", MB_OK);
+					return 0;
+			}
+			return 0;
+		case WM_NCDESTROY:
+			RemoveWindowSubclass(hWnd, WndProc, uIdSubclass);
+			return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+	}
+
+	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+int APIENTRY WinMain(HINSTANCE hInstance,
 	HINSTANCE /*hPrevInstance*/,
 	LPSTR /*lpCmdLine*/,
 	int /*cmdShow*/)
 {
 	if (!glfwInit()) {
+		MessageBox(NULL, L"GLFW failed to initialize!", L"Leap Motion SteamVR Overlay", MB_OK | MB_ICONERROR);
 		std::cerr << "GLFW failed to initialize!" << std::endl;
 		return 1;
 	}
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-	//glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-	GLFWwindow* window = glfwCreateWindow(640, 480, "Leap Motion SteamVR Overlay", NULL, NULL);
-	glfwMakeContextCurrent(window);
+	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	globalWindow = glfwCreateWindow(640, 480, "Leap Motion SteamVR Overlay", NULL, NULL);
+	HWND windowHandle = glfwGetWin32Window(globalWindow);
+
+	//defaultWndProc = (WNDPROC)GetWindowLongPtr(windowHandle, GWLP_WNDPROC);
+	//SetWindowLongPtr(windowHandle, GWLP_WNDPROC, (long)WndProc);
+
+	SetWindowSubclass(windowHandle, WndProc, 1, 0);
+
+	glfwMakeContextCurrent(globalWindow);
+	glfwSwapInterval(1);
 
 	GLenum err = glewInit();
 	if (err != GLEW_OK) {
+		MessageBox(NULL, L"GLEW failed to initialize!", L"Leap Motion SteamVR Overlay", MB_OK | MB_ICONERROR);
 		std::cerr << "glewInit Error: " << glewGetErrorString(err) << std::endl;
 		return 1;
 	}
@@ -173,11 +258,16 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	GraphicsManager* graphicsManager = GraphicsManager::getInstance();
 
 	if (!graphicsManager->init()) {
+		MessageBox(NULL, L"GraphicsManager failed to initialize!", L"Leap Motion SteamVR Overlay", MB_OK | MB_ICONERROR);
 		std::cerr << "Graphics Manager initialization failed!" << std::endl;
 		return 1;
 	}
 
-	glfwSwapInterval(1);
+	addTrayIcon(hInstance, windowHandle, 1);
+
+	// more window setup
+	GLFWimage windowIcon = loadResource(hInstance, IDB_PNG1);
+	glfwSetWindowIcon(globalWindow, 1, &windowIcon);
 
 	vrController->init();
 	leapHandler->openConnection();
@@ -186,34 +276,43 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 
 	vrController->showOverlay();
 
-	while (!glfwWindowShouldClose(window)) {
+	glfwSetWindowCloseCallback(globalWindow, [](GLFWwindow* wnd) {
+		glfwHideWindow(wnd);
+	});
+
+	while (globalKeepRunning) {
 		graphicsManager->updateTexture();
 
 		if (leapHandler->swipeDetected()) {
 			vrController->toggleOverlay();
 		}
 
-		int width, height;
-
-		// bind output window as framebuffer
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		glfwGetFramebufferSize(window, &width, &height);
-
-		glViewport(0, 0, width, height);
-
-		display_display();
-
 		if (graphicsManager->wasUpdated()) {
 			//std::cout << "update " << graphicsManager->getVideoTexture() << std::endl;
 			vrController->setTexture(graphicsManager->getVideoTexture());
 		}
 
-		glfwSwapBuffers(window);
+		if (glfwGetWindowAttrib(globalWindow, GLFW_VISIBLE)) {
+			int width, height;
+
+			// bind output window as framebuffer
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			glfwGetFramebufferSize(globalWindow, &width, &height);
+
+			glViewport(0, 0, width, height);
+
+			display_render();
+
+			glfwSwapBuffers(globalWindow);
+		}
+
 		glfwPollEvents();
 	}
 
-	glfwDestroyWindow(window);
+	removeTrayIcon(windowHandle, 1);
+
+	glfwDestroyWindow(globalWindow);
 	glfwTerminate();
 
 	leapHandler->join();

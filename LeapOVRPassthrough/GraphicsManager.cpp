@@ -216,11 +216,13 @@ void GraphicsManager::setFrame(int width, int height, uint8_t* data)
 	m_width = width;
 	m_height = height;
 
-	if (m_pixelData != nullptr) {
-		free(m_pixelData);
+	if (m_dimensionsChanged) {
+		if (m_pixelData != nullptr) {
+			free(m_pixelData);
+		}
+
+		m_pixelData = (uint8_t*)malloc(m_width * m_height);
 	}
-	
-	m_pixelData = (uint8_t*)malloc(m_width * m_height);
 
 	memcpy(m_pixelData, data, m_width * m_height);
 }
