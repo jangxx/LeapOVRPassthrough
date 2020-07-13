@@ -7,14 +7,14 @@
 #include "OVROverlayController.h"
 #include "GraphicsManager.h"
 
-GLuint dbg_fullscreenQuadVAO;
-GLuint dbg_fullscreenQuadBuffer;
-GLuint dbg_fullscreenQuadUVs;
-GLuint dbg_vertexShader, dbg_fragmentShader;
-GLuint dbg_shaderProgram;
-GLuint dbg_textureSamplerID;
+GLuint display_fullscreenQuadVAO;
+GLuint display_fullscreenQuadBuffer;
+GLuint display_fullscreenQuadUVs;
+GLuint display_vertexShader, display_fragmentShader;
+GLuint display_shaderProgram;
+GLuint display_textureSamplerID;
 
-const char* dbg_vertexShaderCode = R"""(
+const char* display_vertexShaderCode = R"""(
 #version 420 core
 
 layout(location = 0) in vec3 position;
@@ -27,9 +27,9 @@ void main() {
 	gl_Position = vec4(position, 1.0);
 }
 )""";
-const GLint dbg_vertexShaderCodeLength = strlen(dbg_vertexShaderCode);
+const GLint display_vertexShaderCodeLength = strlen(display_vertexShaderCode);
 
-const char* dbg_fragmentShaderCode = R"""(
+const char* display_fragmentShaderCode = R"""(
 #version 420 core
 
 layout(location = 0) out vec3 diffuseColor;
@@ -39,11 +39,10 @@ uniform sampler2D textureSampler;
 in vec2 vUv;
 
 void main() {
-	//diffuseColor = vec3(vUv.x, vUv.y, 0.0);
 	diffuseColor = texture( textureSampler, vec2(vUv.x, 1 - vUv.y)).rgb;
 }
 )""";
-const GLint dbg_fragmentShaderCodeLength = strlen(dbg_fragmentShaderCode);
+const GLint display_fragmentShaderCodeLength = strlen(display_fragmentShaderCode);
 
 static const GLfloat g_quad_vertex_buffer_data[] = {
 	-1.0f, -1.0f, 0.0f,
@@ -63,134 +62,87 @@ static const GLfloat g_quad_uvs_buffer_data[] = {
 	1.0f, 0.0f,
 };
 
-GLuint testTex, testTex2;
-
-void dbg_init() {
+void display_init() {
 	GLint Result = GL_FALSE;
 	int InfoLogLength;
 
-	dbg_vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(dbg_vertexShader, 1, &dbg_vertexShaderCode, &dbg_vertexShaderCodeLength);
-	glCompileShader(dbg_vertexShader);
+	display_vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(display_vertexShader, 1, &display_vertexShaderCode, &display_vertexShaderCodeLength);
+	glCompileShader(display_vertexShader);
 
-	glGetShaderiv(dbg_vertexShader, GL_COMPILE_STATUS, &Result);
-	glGetShaderiv(dbg_vertexShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
+	glGetShaderiv(display_vertexShader, GL_COMPILE_STATUS, &Result);
+	glGetShaderiv(display_vertexShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
 	if (InfoLogLength > 0) {
 		std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
-		glGetShaderInfoLog(dbg_vertexShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
+		glGetShaderInfoLog(display_vertexShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
 		printf("%s\n", &VertexShaderErrorMessage[0]);
 	}
 
-	dbg_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(dbg_fragmentShader, 1, &dbg_fragmentShaderCode, &dbg_fragmentShaderCodeLength);
-	glCompileShader(dbg_fragmentShader);
+	display_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(display_fragmentShader, 1, &display_fragmentShaderCode, &display_fragmentShaderCodeLength);
+	glCompileShader(display_fragmentShader);
 
-	glGetShaderiv(dbg_fragmentShader, GL_COMPILE_STATUS, &Result);
-	glGetShaderiv(dbg_fragmentShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
+	glGetShaderiv(display_fragmentShader, GL_COMPILE_STATUS, &Result);
+	glGetShaderiv(display_fragmentShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
 	if (InfoLogLength > 0) {
 		std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
-		glGetShaderInfoLog(dbg_fragmentShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
+		glGetShaderInfoLog(display_fragmentShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
 		printf("%s\n", &VertexShaderErrorMessage[0]);
 	}
 
-	dbg_shaderProgram = glCreateProgram();
-	glAttachShader(dbg_shaderProgram, dbg_vertexShader);
-	glAttachShader(dbg_shaderProgram, dbg_fragmentShader);
-	glLinkProgram(dbg_shaderProgram);
+	display_shaderProgram = glCreateProgram();
+	glAttachShader(display_shaderProgram, display_vertexShader);
+	glAttachShader(display_shaderProgram, display_fragmentShader);
+	glLinkProgram(display_shaderProgram);
 
 	// Check the program
-	glGetProgramiv(dbg_shaderProgram, GL_LINK_STATUS, &Result);
-	glGetProgramiv(dbg_shaderProgram, GL_INFO_LOG_LENGTH, &InfoLogLength);
+	glGetProgramiv(display_shaderProgram, GL_LINK_STATUS, &Result);
+	glGetProgramiv(display_shaderProgram, GL_INFO_LOG_LENGTH, &InfoLogLength);
 	if (InfoLogLength > 0) {
 		std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
-		glGetProgramInfoLog(dbg_shaderProgram, InfoLogLength, NULL, &ProgramErrorMessage[0]);
+		glGetProgramInfoLog(display_shaderProgram, InfoLogLength, NULL, &ProgramErrorMessage[0]);
 		printf("%s\n", &ProgramErrorMessage[0]);
 	}
 
-	dbg_textureSamplerID = glGetUniformLocation(dbg_shaderProgram, "textureSampler");
+	display_textureSamplerID = glGetUniformLocation(display_shaderProgram, "textureSampler");
 
-	glGenVertexArrays(1, &dbg_fullscreenQuadVAO);
-	glBindVertexArray(dbg_fullscreenQuadVAO);
+	glGenVertexArrays(1, &display_fullscreenQuadVAO);
+	glBindVertexArray(display_fullscreenQuadVAO);
 
-	glGenBuffers(1, &dbg_fullscreenQuadBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, dbg_fullscreenQuadBuffer);
+	glGenBuffers(1, &display_fullscreenQuadBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, display_fullscreenQuadBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW);
 
-	glGenBuffers(1, &dbg_fullscreenQuadUVs);
-	glBindBuffer(GL_ARRAY_BUFFER, dbg_fullscreenQuadUVs);
+	glGenBuffers(1, &display_fullscreenQuadUVs);
+	glBindBuffer(GL_ARRAY_BUFFER, display_fullscreenQuadUVs);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_uvs_buffer_data), g_quad_uvs_buffer_data, GL_STATIC_DRAW);
 }
 
-void dbg_display() {
+void display_display() {
 	GraphicsManager* graphicsManager = GraphicsManager::getInstance();
 
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	glUseProgram(dbg_shaderProgram);
+	glUseProgram(display_shaderProgram);
 
-	//glActiveTexture(GL_TEXTURE0);
-	glUniform1i(dbg_textureSamplerID, 0);
+	glUniform1i(display_textureSamplerID, 0);
 	glBindTexture(GL_TEXTURE_2D, graphicsManager->getVideoTexture());
-	//glBindTexture(GL_TEXTURE_2D, testTex);
 
 	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, dbg_fullscreenQuadBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, display_fullscreenQuadBuffer);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, dbg_fullscreenQuadUVs);
+	glBindBuffer(GL_ARRAY_BUFFER, display_fullscreenQuadUVs);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 
-	/*glColor3f(1.0, 0.0, 0.0);
-
-	glBegin(GL_POINTS);
-	glVertex2f(10.0, 10.0);
-	glVertex2f(150.0, 80.0);
-	glVertex2f(100.0, 20.0);
-	glVertex2f(200.0, 100.0);*/
 	glEnd();
 	glFlush();
 }
-
-GLuint createTestTexture(int width = 512, int height = 512) {
-	const int PIXEL_BYTES = 1;
-
-	uint8_t* pixelData = (uint8_t*)malloc(width * height * PIXEL_BYTES);
-
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			int index = (y * width + x) * PIXEL_BYTES;
-			pixelData[index] = x & 0xFF;
-			/*pixelData[index + 1] = 0;
-			pixelData[index + 2] = 0;
-			pixelData[index + 3] = 200;*/
-		}
-	}
-
-	GLuint resultTexture;
-	glGenTextures(1, &resultTexture);
-	glBindTexture(GL_TEXTURE_2D, resultTexture);
-
-	GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_RED };
-	glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, pixelData);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	return resultTexture;
-}
-
-//void dgb_redrawTimer(int value) {
-//	glutPostRedisplay();
-//	glutTimerFunc(1000 / 30, dgb_redrawTimer, value + 1);
-//}
 
 int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	HINSTANCE /*hPrevInstance*/,
@@ -229,9 +181,7 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	vrController->init();
 	leapHandler->openConnection();
 
-	//testTex = createTestTexture(1000, 500);
-
-	dbg_init();
+	display_init();
 
 	vrController->showOverlay();
 
@@ -250,7 +200,7 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 
 		glViewport(0, 0, width, height);
 
-		dbg_display();
+		display_display();
 
 		if (graphicsManager->wasUpdated()) {
 			//std::cout << "update " << graphicsManager->getVideoTexture() << std::endl;
@@ -271,7 +221,5 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 
 int main(int argc, char** argv)
 {
-	//glutInit(&argc, argv);
-
 	return WinMain(GetModuleHandle(NULL), NULL, GetCommandLineA(), SW_SHOWNORMAL);
 }
