@@ -67,7 +67,7 @@ static const GLfloat g_quad_uvs_buffer_data[] = {
 	1.0f, 0.0f,
 };
 
-GLuint testTex;
+GLuint testTex, testTex2;
 
 void dbg_init() {
 	glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -141,9 +141,9 @@ void dbg_display() {
 	glUseProgram(dbg_shaderProgram);
 
 	//glActiveTexture(GL_TEXTURE0);
-	//glUniform1i(dbg_textureSamplerID, 0);
+	glUniform1i(dbg_textureSamplerID, 0);
 	//glBindTexture(GL_TEXTURE_2D, graphicsManager->getVideoTexture());
-	//glBindTexture(GL_TEXTURE_2D, testTex);
+	glBindTexture(GL_TEXTURE_2D, testTex2);
 	
 
 	glEnableVertexAttribArray(0);
@@ -178,7 +178,7 @@ GLuint createTestTexture(int width = 512, int height = 512) {
 			pixelData[index] = x & 0xFF;
 			pixelData[index + 1] = 0;
 			pixelData[index + 2] = 0;
-			pixelData[index + 3] = 255;
+			pixelData[index + 3] = 200;
 		}
 	}
 
@@ -198,10 +198,32 @@ GLuint createTestTexture(int width = 512, int height = 512) {
 	return resultTexture;
 }
 
-void dgb_redrawTimer(int value) {
-	glutPostRedisplay();
-	glutTimerFunc(1000 / 30, dgb_redrawTimer, value + 1);
+GLuint createTextureCopy(GLuint srcId, int width = 512, int height = 512) {
+	GLuint resultTexture;
+	glGenTextures(1, &resultTexture);
+	glBindTexture(GL_TEXTURE_2D, resultTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+	glCopyImageSubData(srcId, GL_TEXTURE_2D, 0, 0, 0, 0, resultTexture, GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
+
+	GLenum err = glGetError();
+	if (err != GL_NO_ERROR) {
+		std::cout << "GL error: " << err << std::endl;
+	}
+
+	return resultTexture;
 }
+
+//void dgb_redrawTimer(int value) {
+//	glutPostRedisplay();
+//	glutTimerFunc(1000 / 30, dgb_redrawTimer, value + 1);
+//}
 
 int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	HINSTANCE /*hPrevInstance*/,
@@ -218,8 +240,11 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	glfwInit();
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	GLFWwindow* window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+	GLFWwindow* window = glfwCreateWindow(640, 480, "Test Window", NULL, NULL);
 	glfwMakeContextCurrent(window);
+
+	std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
 
 	OVROverlayController* vrController = OVROverlayController::getInstance();
 	LeapHandler* leapHandler = LeapHandler::getInstance();
@@ -232,14 +257,16 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	vrController->init();
 	//leapHandler->openConnection();
 
-	testTex = createTestTexture();
-	
+	testTex = createTestTexture(1000, 500);
+	testTex2 = createTextureCopy(testTex, 1000, 500);
+
+	std::cout << "texture id: " << testTex << " copy id: " << testTex2 << std::endl;
 
 	dbg_init();
 	/*glutTimerFunc(1000 / 60, dgb_redrawTimer, 0);*/
 
 	vrController->setTexture(&testTex);
-	//vrController->showOverlay();
+	vrController->showOverlay();
 
 	//glutMainLoop();
 

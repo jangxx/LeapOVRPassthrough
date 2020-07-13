@@ -60,10 +60,10 @@ bool OVROverlayController::init()
 			std::cout << "SetOverlayTransformAbsolute error: " << err << std::endl;
 		}
 
-		err = vr::VROverlay()->ShowOverlay(m_ulOverlayHandle);
+		/*err = vr::VROverlay()->ShowOverlay(m_ulOverlayHandle);
 		if (err != vr::VROverlayError_None) {
 			std::cout << "ShowOverlay error: " << err << std::endl;
-		}
+		}*/
 
 		/*err = vr::VROverlay()->SetOverlayFromFile(m_ulOverlayHandle, "C:/Users/Jan/Pictures/megaman_720p.jpg");
 		if (err != vr::VROverlayError_None) {
@@ -107,6 +107,18 @@ void OVROverlayController::setTexture(GLuint* id)
 
 	if (err != vr::VROverlayError_None) {
 		std::cout << "setTexture error: " << err << std::endl;
+	}
+
+	vr::VRTextureBounds_t bounds;
+	bounds.uMin = 0;
+	bounds.uMax = 1;
+	bounds.vMin = 1;
+	bounds.vMax = 0;
+
+	err = vr::VROverlay()->SetOverlayTextureBounds(m_ulOverlayHandle, &bounds);
+
+	if (err != vr::VROverlayError_None) {
+		std::cout << "SetOverlayTextureBounds error: " << err << std::endl;
 	}
 }
 
