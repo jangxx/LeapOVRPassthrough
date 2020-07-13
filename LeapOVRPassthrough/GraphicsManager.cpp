@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "GraphicsManager.h"
 
 const char* vertexShaderCode = R"""(

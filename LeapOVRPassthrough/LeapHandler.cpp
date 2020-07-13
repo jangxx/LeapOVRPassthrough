@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "LeapHandler.h"
 
 std::map<eLeapRS, std::string> errorMap = {

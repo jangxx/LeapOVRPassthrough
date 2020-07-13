@@ -41,7 +41,7 @@ void main() {
 	gl_Position = vec4(position, 1.0);
 }
 )""";
-const GLint display_vertexShaderCodeLength = strlen(display_vertexShaderCode);
+const size_t display_vertexShaderCodeLength = strlen(display_vertexShaderCode);
 
 const char* display_fragmentShaderCode = R"""(
 #version 420 core
@@ -105,7 +105,7 @@ void display_init() {
 	int InfoLogLength;
 
 	display_vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(display_vertexShader, 1, &display_vertexShaderCode, &display_vertexShaderCodeLength);
+	glShaderSource(display_vertexShader, 1, &display_vertexShaderCode, (GLint*)&display_vertexShaderCodeLength);
 	glCompileShader(display_vertexShader);
 
 	glGetShaderiv(display_vertexShader, GL_COMPILE_STATUS, &Result);

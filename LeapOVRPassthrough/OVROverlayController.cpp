@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "OVROverlayController.h"
 
 OVROverlayController* s_shareInstance = nullptr;
