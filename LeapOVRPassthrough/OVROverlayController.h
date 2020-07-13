@@ -19,7 +19,8 @@ public:
 
 	void showOverlay();
 	void hideOverlay();
-	void setTexture(GLuint* id);
+	void toggleOverlay();
+	void setTexture(GLuint id);
 
 	bool BHMDAvailable();
 	//vr::IVRSystem* getVRSystem();

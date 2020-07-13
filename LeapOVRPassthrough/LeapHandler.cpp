@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "LeapHandler.h"
-#include "GraphicsManager.h"
 
 std::map<eLeapRS, std::string> errorMap = {
 	{ eLeapRS_Success, "Success" },
@@ -115,9 +114,17 @@ bool LeapHandler::openConnection()
 	return true;
 }
 
+bool LeapHandler::swipeDetected()
+{
+	bool result = m_swipeDetected;
+	m_swipeDetected = false;
+	return result;
+}
+
 void LeapHandler::join()
 {
 	if (m_started && m_pollingThread.joinable()) {
+		m_started = false;
 		m_pollingThread.join();
 	}
 }
@@ -127,50 +134,52 @@ void LeapHandler::pollController()
 	eLeapRS result;
 	LEAP_CONNECTION_MESSAGE msg;
 
-	int blubb = 0;
-
 	while (m_started) {
 		result = LeapPollConnection(m_connection, 1000, &msg);
 
 		//std::cout << eventMsgMap[msg.type] << std::endl;
 
 		switch (msg.type) {
-		case eLeapEventType_LogEvents: 
-		{
-			const LEAP_LOG_EVENTS* events = msg.log_events;
-			std::cout << "Messages (" << events->nEvents << "):" << std::endl;
+			case eLeapEventType_LogEvents: 
+			{
+				const LEAP_LOG_EVENTS* events = msg.log_events;
+				//std::cout << "Messages (" << events->nEvents << "):" << std::endl;
 
-			for (uint32_t i = 0; i < events->nEvents; i++) {
-				LEAP_LOG_EVENT evt = events->events[i];
+				for (uint32_t i = 0; i < events->nEvents; i++) {
+					LEAP_LOG_EVENT evt = events->events[i];
 
-				std::cout << "[" << evt.timestamp << "] " << evt.message << std::endl;
-			}
-
-			break;
-		}
-		case eLeapEventType_Image: 
-		{
-			const LEAP_IMAGE_EVENT* evt = msg.image_event;
-			GraphicsManager* graphicsManager = GraphicsManager::getInstance();
-
-			updateBrightUpperPixels(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset);
-
-			//std::cout << countLastBUPIncreasing() << std::endl;
-
-			if (countLastBUPIncreasing() >= 5) {
-				auto cur_ts = steady_clock::now();
-
-				if (std::chrono::duration_cast<std::chrono::seconds>(cur_ts - m_lastSwipeDetected) > 2 * std::chrono::seconds()) {
-					m_lastSwipeDetected = cur_ts;
-
-					// SWIPE DETECTED
+					std::cout << "[" << evt.timestamp << "] " << evt.message << std::endl;
 				}
-			}
 
-			graphicsManager->setFrame(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset, (uint8_t*)evt->image[1].data + evt->image[1].offset);
-			//evt->image[0].properties.
-			break;
-		}
+				break;
+			}
+			case eLeapEventType_LogEvent:
+			{
+				const LEAP_LOG_EVENT* evt = msg.log_event;
+			
+				std::cout << "[" << evt->timestamp << "] " << evt->message << std::endl;
+
+				break;
+			}
+			case eLeapEventType_Image: 
+			{
+				const LEAP_IMAGE_EVENT* evt = msg.image_event;
+				GraphicsManager* graphicsManager = GraphicsManager::getInstance();
+
+				updateBrightUpperPixels(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset);
+
+				if (countLastBUPIncreasing() >= 5) {
+					auto cur_ts = steady_clock::now();
+
+					if (std::chrono::duration_cast<std::chrono::seconds>(cur_ts - m_lastSwipeDetected) > 2 * std::chrono::seconds()) {
+						m_lastSwipeDetected = cur_ts;
+						m_swipeDetected = true;
+					}
+				}
+
+				graphicsManager->setFrame(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset);
+				break;
+			}
 		}
 	}
 }

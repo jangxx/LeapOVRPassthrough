@@ -199,7 +199,7 @@ GLuint createTestTexture(int width = 512, int height = 512) {
 	glGenTextures(1, &resultTexture);
 	glBindTexture(GL_TEXTURE_2D, resultTexture);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelData);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -244,10 +244,14 @@ int main()
 	testTex = createTestTexture(512, 512);
 	GLuint testTex2 = createTestTexture(512, 512);
 
+	std::cout << "tex id: " << testTex << std::endl;
+
+	glFinish();
+
 	vr::Texture_t texture;
-	texture.handle = &testTex;
+	texture.handle = (void*)(uintptr_t)testTex;
 	texture.eType = vr::TextureType_OpenGL;
-	texture.eColorSpace = vr::ColorSpace_Auto;
+	texture.eColorSpace = vr::ColorSpace_Linear;
 
 	vr::VROverlayError vrErr = vr::VROverlay()->SetOverlayTexture(overlayHandle, &texture);
 

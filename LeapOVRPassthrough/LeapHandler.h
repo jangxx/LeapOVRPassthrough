@@ -6,10 +6,11 @@
 #include <vector>
 #include <chrono>
 
+#include "GraphicsManager.h"
+
 extern "C" {
 	#include <LeapC.h>
 }
-
 
 class LeapHandler
 {
@@ -24,6 +25,7 @@ public:
 	~LeapHandler();
 
 	bool openConnection();
+	bool swipeDetected();
 	void join();
 
 private:
@@ -33,6 +35,7 @@ private:
 
 	std::thread m_pollingThread;
 	bool m_started { false };
+	bool m_swipeDetected { false };
 
 	LEAP_CONNECTION m_connection;
 

@@ -109,7 +109,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lib\x64\LeapC.lib;lib\x64\openvr_api.lib;lib\x64\freeglut.lib;lib\x64\glew32s.lib;lib\x64\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lib\x64\LeapC.lib;lib\x64\openvr_api.lib;lib\x64\glew32.lib;lib\x64\glfw3dll.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y $(ProjectDir)lib\x64\*.dll $(OutDir)</Command>

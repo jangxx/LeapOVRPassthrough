@@ -50,7 +50,7 @@ bool OVROverlayController::init()
 		vr::HmdMatrix34_t position = {
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, -1.0f
+			0.0f, 0.0f, 1.0f, -1.5f
 		};
 
 		err = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_ulOverlayHandle, 0, &position);
@@ -96,10 +96,19 @@ void OVROverlayController::hideOverlay()
 	}
 }
 
-void OVROverlayController::setTexture(GLuint* id)
+void OVROverlayController::toggleOverlay()
+{
+	if (vr::VROverlay()->IsOverlayVisible(m_ulOverlayHandle)) {
+		vr::VROverlay()->HideOverlay(m_ulOverlayHandle);
+	} else {
+		vr::VROverlay()->ShowOverlay(m_ulOverlayHandle);
+	}
+}
+
+void OVROverlayController::setTexture(GLuint id)
 {
 	vr::Texture_t texture;
-	texture.handle = id;
+	texture.handle = (void*)(uintptr_t)id;
 	texture.eType = vr::TextureType_OpenGL;
 	texture.eColorSpace = vr::ColorSpace_Auto;
 
