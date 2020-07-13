@@ -50,25 +50,14 @@ bool OVROverlayController::init()
 		vr::HmdMatrix34_t position = {
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, -1.5f
+			0.0f, 0.0f, 1.0f, -1.0f
 		};
 
 		err = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_ulOverlayHandle, 0, &position);
-		//err = vr::VROverlay()->SetOverlayTransformAbsolute(m_ulOverlayHandle, vr::TrackingUniverseStanding, &position);
 
 		if (err != vr::VROverlayError_None) {
 			std::cout << "SetOverlayTransformAbsolute error: " << err << std::endl;
 		}
-
-		/*err = vr::VROverlay()->ShowOverlay(m_ulOverlayHandle);
-		if (err != vr::VROverlayError_None) {
-			std::cout << "ShowOverlay error: " << err << std::endl;
-		}*/
-
-		/*err = vr::VROverlay()->SetOverlayFromFile(m_ulOverlayHandle, "C:/Users/Jan/Pictures/megaman_720p.jpg");
-		if (err != vr::VROverlayError_None) {
-			std::cout << "SetOverlayFromFile error: " << err << std::endl;
-		}*/
 
 		std::cout << "Successfully created overlay" << std::endl;
 	} else {
@@ -116,18 +105,6 @@ void OVROverlayController::setTexture(GLuint id)
 
 	if (err != vr::VROverlayError_None) {
 		std::cout << "setTexture error: " << err << std::endl;
-	}
-
-	vr::VRTextureBounds_t bounds;
-	bounds.uMin = 0;
-	bounds.uMax = 1;
-	bounds.vMin = 1;
-	bounds.vMax = 0;
-
-	err = vr::VROverlay()->SetOverlayTextureBounds(m_ulOverlayHandle, &bounds);
-
-	if (err != vr::VROverlayError_None) {
-		std::cout << "SetOverlayTextureBounds error: " << err << std::endl;
 	}
 }
 

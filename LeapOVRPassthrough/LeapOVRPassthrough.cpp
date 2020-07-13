@@ -39,7 +39,7 @@ uniform sampler2D textureSampler;
 in vec2 vUv;
 
 void main() {
-	diffuseColor = texture( textureSampler, vec2(vUv.x, 1 - vUv.y)).rgb;
+	diffuseColor = texture( textureSampler, vec2(vUv.x, vUv.y)).rgb;
 }
 )""";
 const GLint display_fragmentShaderCodeLength = strlen(display_fragmentShaderCode);
@@ -150,13 +150,14 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 	int /*cmdShow*/)
 {
 	if (!glfwInit()) {
+		std::cerr << "GLFW failed to initialize!" << std::endl;
 		return 1;
 	}
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	//glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-	GLFWwindow* window = glfwCreateWindow(640, 480, "Test Window", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(640, 480, "Leap Motion SteamVR Overlay", NULL, NULL);
 	glfwMakeContextCurrent(window);
 
 	GLenum err = glewInit();
@@ -194,6 +195,7 @@ int APIENTRY WinMain(HINSTANCE /*hInstance*/,
 
 		int width, height;
 
+		// bind output window as framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		glfwGetFramebufferSize(window, &width, &height);

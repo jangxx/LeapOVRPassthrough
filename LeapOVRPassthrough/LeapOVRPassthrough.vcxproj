@@ -107,7 +107,7 @@
       <PreprocessToFile>false</PreprocessToFile>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>lib\x64\LeapC.lib;lib\x64\openvr_api.lib;lib\x64\glew32.lib;lib\x64\glfw3dll.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>

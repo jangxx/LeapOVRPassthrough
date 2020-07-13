@@ -5,6 +5,9 @@
 #include <openvr.h>
 #include <iostream>
 
+#define FRAMEBUFFER_WIDTH 640
+#define FRAMEBUFFER_HEIGHT 480
+
 class OVROverlayController
 {
 public:

@@ -26,8 +26,7 @@ uniform sampler2D textureSampler;
 in vec2 vUv;
 
 void main() {
-	float val = texture( textureSampler, vUv).r;
-	diffuseColor = vec4(val, val, val, 1);
+	diffuseColor = vec4(texture( textureSampler, vec2(vUv.x, 1 - vUv.y)).rrr, 1);
 }
 )""";
 const GLint fragmentShaderCodeLength = strlen(fragmentShaderCode);
@@ -145,7 +144,7 @@ bool GraphicsManager::init()
 
 	glGenTextures(1, &m_framebufferTexture);
 	glBindTexture(GL_TEXTURE_2D, m_framebufferTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 800, 400, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
@@ -240,7 +239,7 @@ bool GraphicsManager::wasUpdated()
 void GraphicsManager::updateFramebuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
-	glViewport(0, 0, 512, 512);
+	glViewport(0, 0, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 
