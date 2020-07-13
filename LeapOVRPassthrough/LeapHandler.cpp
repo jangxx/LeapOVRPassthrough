@@ -220,7 +220,7 @@ uint32_t LeapHandler::countLastBUPIncreasing()
 
 	for (int i = 1; i <= m_brightUpperPixelsRingbuffer.size(); i++) {
 		int index = m_bupRBNextIndex - i;
-		index = (index < 0) ? index + m_brightUpperPixelsRingbuffer.size() : index;
+		index = (index < 0) ? index + static_cast<int>(m_brightUpperPixelsRingbuffer.size()) : index;
 
 		uint32_t value = m_brightUpperPixelsRingbuffer[index];
 

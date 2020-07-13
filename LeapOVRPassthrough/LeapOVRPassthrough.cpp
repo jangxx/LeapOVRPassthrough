@@ -15,6 +15,9 @@
 #include "OVROverlayController.h"
 #include "GraphicsManager.h"
 
+#define TRAYMENU_EXIT 1
+#define TRAYMENU_SHOW 2
+
 GLuint display_fullscreenQuadVAO;
 GLuint display_fullscreenQuadBuffer;
 GLuint display_fullscreenQuadUVs;
@@ -199,6 +202,24 @@ void removeTrayIcon(HWND hWnd, UINT uID) {
 	Shell_NotifyIcon(NIM_DELETE, &nid);
 }
 
+void showTrayMenu(HWND hWnd, POINT *curpos, int wDefaultItem) {
+	HMENU hPopup = CreatePopupMenu();
+
+	InsertMenu(hPopup, 0, MF_BYPOSITION | MF_STRING, TRAYMENU_SHOW, L"Show Window");
+	InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_EXIT, L"Exit");
+
+	POINT pt;
+	if (!curpos) {
+		GetCursorPos(&pt);
+		curpos = &pt;
+	}
+
+	WORD cmd = TrackPopupMenu(hPopup, TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD | TPM_NONOTIFY, curpos->x, curpos->y, 0, hWnd, NULL);
+	SendMessage(hWnd, WM_COMMAND, cmd, 0);
+
+	DestroyMenu(hPopup);
+}
+
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
 	switch (uMsg) {
 		case WM_APP:
@@ -207,7 +228,18 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					glfwShowWindow(globalWindow);
 					return 0;
 				case WM_RBUTTONUP:
-					MessageBox(hWnd, L"asd", L"right", MB_OK);
+					SetForegroundWindow(hWnd);
+					showTrayMenu(hWnd, NULL, -1);
+					return 0;
+			}
+			return 0;
+		case WM_COMMAND:
+			switch (wParam) {
+				case TRAYMENU_EXIT:
+					globalKeepRunning = false;
+					return 0;
+				case TRAYMENU_SHOW:
+					glfwShowWindow(globalWindow);
 					return 0;
 			}
 			return 0;
@@ -305,9 +337,11 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 			display_render();
 
 			glfwSwapBuffers(globalWindow);
-		}
 
-		glfwPollEvents();
+			glfwPollEvents();
+		} else {
+			glfwWaitEventsTimeout(1.0 / 60.0); // aim for roughly 60fps when no window is displayed
+		}
 	}
 
 	removeTrayIcon(windowHandle, 1);
