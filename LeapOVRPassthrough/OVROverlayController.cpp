@@ -41,7 +41,7 @@ bool OVROverlayController::init()
 	}
 
 	if (success) {
-		vr::VROverlayError err = vr::VROverlay()->SetOverlayWidthInMeters(m_ulOverlayHandle, 1.5f);
+		vr::VROverlayError err = vr::VROverlay()->SetOverlayWidthInMeters(m_ulOverlayHandle, 0.5f);
 		if (err != vr::VROverlayError_None) {
 			std::cout << "SetOverlayWidthInMeters error: " << err << std::endl;
 		}
@@ -49,7 +49,7 @@ bool OVROverlayController::init()
 		vr::HmdMatrix34_t position = {
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, -1.0f
+			0.0f, 0.0f, 1.0f, -0.3f
 		};
 
 		err = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_ulOverlayHandle, 0, &position);

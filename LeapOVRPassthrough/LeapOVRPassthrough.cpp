@@ -306,7 +306,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
 	display_init();
 
-	vrController->showOverlay();
+	//vrController->showOverlay();
 
 	glfwSetWindowCloseCallback(globalWindow, [](GLFWwindow* wnd) {
 		glfwHideWindow(wnd);
