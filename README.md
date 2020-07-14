@@ -1,4 +1,4 @@
-# Leap Motion Overlay for SteamVR
+![logo](/other/git_logo.png)
 
 A small application which displays the IR video feed of a Leap Motion controller mounted to a VR headset when the user slides their hand over it.
 This app was greatly inspired by Leap Motion's own [Quick Switch](https://developer-archive.leapmotion.com/gallery/quick-switch), which unfortunately never made it out of Unity and which is now deprecated with the Orion 4.0.0 drivers.
