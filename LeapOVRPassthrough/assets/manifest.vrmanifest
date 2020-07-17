@@ -1,0 +1,18 @@
+{
+	"source": "builtin",
+	"applications": [
+		{
+			"app_key": "de.literalchaos.leap_motion_ovr_overlay",
+			"launch_type": "binary",
+			"binary_path_windows": "LeapMotionOverlay.exe",
+			"is_dashboard_overlay": true,
+
+			"strings": {
+				"en_us": {
+					"name": "Leap Motion Overlay",
+					"description": "Use your HMD-mounted Leap Motion controller as a passthrough camera"
+				}
+			}
+		}
+	]
+}

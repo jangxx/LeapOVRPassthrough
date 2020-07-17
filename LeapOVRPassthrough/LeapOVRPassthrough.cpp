@@ -17,6 +17,8 @@
 
 #define TRAYMENU_EXIT 1
 #define TRAYMENU_SHOW 2
+#define TRAYMENU_INSTALL_MANIFEST 3
+#define TRAYMENU_REMOVE_MANIFEST 4
 
 GLuint display_fullscreenQuadVAO;
 GLuint display_fullscreenQuadBuffer;
@@ -203,10 +205,19 @@ void removeTrayIcon(HWND hWnd, UINT uID) {
 }
 
 void showTrayMenu(HWND hWnd, POINT *curpos, int wDefaultItem) {
+	OVROverlayController* vrController = OVROverlayController::getInstance();
+
 	HMENU hPopup = CreatePopupMenu();
 
 	InsertMenu(hPopup, 0, MF_BYPOSITION | MF_STRING, TRAYMENU_SHOW, L"Show Window");
-	InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_EXIT, L"Exit");
+
+	if (vrController->isManifestInstalled()) {
+		InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_REMOVE_MANIFEST, L"Unregister from SteamVR");
+	} else {
+		InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_INSTALL_MANIFEST, L"Register with SteamVR");
+	}
+
+	InsertMenu(hPopup, 2, MF_BYPOSITION | MF_STRING, TRAYMENU_EXIT, L"Exit");
 
 	POINT pt;
 	if (!curpos) {
@@ -221,6 +232,8 @@ void showTrayMenu(HWND hWnd, POINT *curpos, int wDefaultItem) {
 }
 
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
+	OVROverlayController* vrController = OVROverlayController::getInstance();
+
 	switch (uMsg) {
 		case WM_APP:
 			switch (lParam) {
@@ -240,6 +253,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					return 0;
 				case TRAYMENU_SHOW:
 					glfwShowWindow(globalWindow);
+					return 0;
+				case TRAYMENU_INSTALL_MANIFEST:
+					vrController->installManifest();
+					return 0;
+				case TRAYMENU_REMOVE_MANIFEST:
+					vrController->removeManifest();
 					return 0;
 			}
 			return 0;
@@ -312,7 +331,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 		glfwHideWindow(wnd);
 	});
 
-	while (globalKeepRunning) {
+	while (globalKeepRunning && vrController->isConnected()) {
 		graphicsManager->updateTexture();
 
 		if (leapHandler->swipeDetected()) {
@@ -342,6 +361,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 		} else {
 			glfwWaitEventsTimeout(1.0 / 60.0); // aim for roughly 60fps when no window is displayed
 		}
+
+		vrController->pollEvents();
 	}
 
 	removeTrayIcon(windowHandle, 1);

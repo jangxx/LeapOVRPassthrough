@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Windows.h>
 #include <GL/glew.h>
 #include <openvr.h>
 #include <iostream>
+#include <filesystem>
 
 #define FRAMEBUFFER_WIDTH 640
 #define FRAMEBUFFER_HEIGHT 480
@@ -17,12 +19,18 @@ public:
 
 	bool init();
 	void shutdown();
-	//void enableRestart();
+
+	void pollEvents();
+	bool isConnected();
 
 	void showOverlay();
 	void hideOverlay();
 	void toggleOverlay();
 	void setTexture(GLuint id);
+
+	void installManifest();
+	void removeManifest();
+	bool isManifestInstalled();
 
 	bool BHMDAvailable();
 	//vr::IVRSystem* getVRSystem();
@@ -31,6 +39,9 @@ public:
 private:
 	bool connectToVRRuntime();
 	void disconnectFromVRRuntime();
+
+	bool m_connected { false };
+	vr::IVRSystem* m_VRSystem { nullptr };
 
 	std::string m_strVRDriver { "No Driver" };
 	std::string m_strVRDisplay { "No Display" };

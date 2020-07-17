@@ -1,5 +1,7 @@
 #include "OVROverlayController.h"
 
+#define APPLICATION_KEY "de.literalchaos.leap_motion_ovr_overlay"
+
 OVROverlayController* s_shareInstance = nullptr;
 
 OVROverlayController * OVROverlayController::getInstance()
@@ -66,6 +68,30 @@ bool OVROverlayController::init()
 	return true;
 }
 
+void OVROverlayController::shutdown()
+{
+	disconnectFromVRRuntime();
+}
+
+void OVROverlayController::pollEvents()
+{
+	if (m_VRSystem == nullptr) return;
+
+	uint8_t eventBuffer[1024];
+	vr::VREvent_t* evt = (vr::VREvent_t*)eventBuffer;
+
+	if (m_VRSystem->PollNextEvent(evt, 1024)) {
+		if (evt->eventType == vr::VREvent_Quit || evt->eventType == vr::VREvent_ProcessQuit) {
+			disconnectFromVRRuntime();
+		}
+	}
+}
+
+bool OVROverlayController::isConnected()
+{
+	return m_connected;
+}
+
 void OVROverlayController::showOverlay()
 {
 	vr::VROverlayError err = vr::VROverlay()->ShowOverlay(m_ulOverlayHandle);
@@ -107,24 +133,76 @@ void OVROverlayController::setTexture(GLuint id)
 	}
 }
 
+void OVROverlayController::installManifest()
+{
+	if (!isManifestInstalled()) {
+		std::cout << "Installing manifest" << std::endl;
+
+		std::filesystem::path manifest_path = std::filesystem::current_path() / "manifest.vrmanifest";
+
+		vr::EVRApplicationError err = vr::VRApplications()->AddApplicationManifest(manifest_path.string().c_str());
+		if (err != vr::VRApplicationError_None) {
+			std::cout << "Error while adding manifest: " << vr::VRApplications()->GetApplicationsErrorNameFromEnum(err) << std::endl;
+			MessageBox(NULL, L"Manifest installation failed!", L"Leap Motion Overlay", MB_OK | MB_ICONERROR);
+		} else {
+			MessageBox(NULL, L"Application successfully registered!", L"Leap Motion Overlay", MB_OK | MB_ICONINFORMATION);
+		}
+	}
+}
+
+void OVROverlayController::removeManifest()
+{
+	if (isManifestInstalled()) {
+		std::cout << "Removing manifest" << std::endl;
+
+		//vr::EVRApplicationProperpty
+
+		char manifestPathBase[512] = { 0 };
+		uint32_t reqSize = vr::VRApplications()->GetApplicationPropertyString(APPLICATION_KEY, vr::VRApplicationProperty_WorkingDirectory_String, manifestPathBase, 512, nullptr);
+
+		std::string manifestPathBaseStr(manifestPathBase);
+		std::filesystem::path manifest_path = std::filesystem::path(manifestPathBaseStr) / "manifest.vrmanifest";
+
+		vr::EVRApplicationError err = vr::VRApplications()->RemoveApplicationManifest(manifest_path.string().c_str());
+		if (err != vr::VRApplicationError_None) {
+			std::cout << "Error while removing manifest: " << vr::VRApplications()->GetApplicationsErrorNameFromEnum(err) << std::endl;
+			MessageBox(NULL, L"Manifest removal failed!", L"Leap Motion Overlay", MB_OK | MB_ICONERROR);
+		} else {
+			MessageBox(NULL, L"Application successfully unregistered!", L"Leap Motion Overlay", MB_OK | MB_ICONINFORMATION);
+		}
+	}
+}
+
+bool OVROverlayController::isManifestInstalled()
+{
+	return vr::VRApplications()->IsApplicationInstalled(APPLICATION_KEY);
+}
+
 bool OVROverlayController::BHMDAvailable()
 {
 	return vr::VRSystem() != NULL;
 }
 
+vr::HmdError OVROverlayController::getLastHmdError()
+{
+	return m_eLastHmdError;
+}
+
 bool OVROverlayController::connectToVRRuntime()
 {
 	m_eLastHmdError = vr::VRInitError_None;
-	vr::IVRSystem *pVRSystem = vr::VR_Init(&m_eLastHmdError, vr::VRApplication_Overlay);
+	m_VRSystem = vr::VR_Init(&m_eLastHmdError, vr::VRApplication_Overlay);
 
-	/*if (m_eLastHmdError != vr::VRInitError_None) {
+	if (m_eLastHmdError != vr::VRInitError_None) {
 		m_strVRDriver = "No Driver";
 		m_strVRDisplay = "No Display";
 		return false;
 	}
 
-	m_strVRDriver = GetTrackedDeviceString(pVRSystem, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
-	m_strVRDisplay = GetTrackedDeviceString(pVRSystem, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);*/
+	//m_strVRDriver = GetTrackedDeviceString(pVRSystem, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
+	//m_strVRDisplay = GetTrackedDeviceString(pVRSystem, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);
+
+	m_connected = true;
 
 	return true;
 }
@@ -132,4 +210,5 @@ bool OVROverlayController::connectToVRRuntime()
 void OVROverlayController::disconnectFromVRRuntime()
 {
 	vr::VR_Shutdown();
+	m_connected = false;
 }

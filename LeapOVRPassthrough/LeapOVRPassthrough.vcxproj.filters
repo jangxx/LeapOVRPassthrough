@@ -73,4 +73,9 @@
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\manifest.vrmanifest">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

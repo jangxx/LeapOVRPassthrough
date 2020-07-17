@@ -77,6 +77,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(ProjectDir)include;$(IncludePath)</IncludePath>
+    <TargetName>LeapMotionOverlay</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -115,7 +116,8 @@
       <AdditionalDependencies>lib\x64\LeapC.lib;lib\x64\openvr_api.lib;lib\x64\glew32.lib;lib\x64\glfw3dll.lib;opengl32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y $(ProjectDir)lib\x64\*.dll $(OutDir)</Command>
+      <Command>xcopy /y $(ProjectDir)lib\x64\*.dll $(OutDir)
+xcopy /y $(ProjectDir)assets\manifest.vrmanifest $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -155,7 +157,8 @@
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y $(ProjectDir)lib\x64\*.dll $(OutDir)</Command>
+      <Command>xcopy /y $(ProjectDir)lib\x64\*.dll $(OutDir)
+xcopy /y $(ProjectDir)assets\manifest.vrmanifest $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -184,6 +187,9 @@
   <ItemGroup>
     <Image Include="assets\icon.ico" />
     <Image Include="assets\icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\manifest.vrmanifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
