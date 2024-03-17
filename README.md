@@ -11,10 +11,13 @@ To quit the application, simply right-click the tray icon and select "Exit".
 
 ## Usage
 
-Mount your Leap Motion controller to your VR headset, and install the Orion 4.0 driver ([Tutorial](https://developer.leapmotion.com/vr-setup/general)).
+Mount your Leap Motion controller to your VR headset, and install the latest [UltraLeap driver](https://leap2.ultraleap.com/gemini-downloads/).
 After you have launched the app, it will sit quietly in the background, waiting for you to slide your hand over the controller from the top.
 If you do so, an overlay will appear in front of you.
 Sliding your hand over the controller again will hide the overlay.
+
+Right-clicking on the tray icon reveals options to rotate the overlay and to make it transparent.
+**Do note that the rotation is only applied to the overlay within SteamVR. It has no bearing over the direction you need to slide your hand over the sensor for the overlay to activate.**
 
 ## Demo video
 
