@@ -19,6 +19,12 @@
 #define TRAYMENU_SHOW 2
 #define TRAYMENU_INSTALL_MANIFEST 3
 #define TRAYMENU_REMOVE_MANIFEST 4
+#define TRAYMENU_ROTATE_0 5
+#define TRAYMENU_ROTATE_90 6
+#define TRAYMENU_ROTATE_180 7
+#define TRAYMENU_ROTATE_270 8
+#define TRAYMENU_OVERLAY_OPAQUE 9
+#define TRAYMENU_OVERLAY_TRANSPARENT 10
 
 GLuint display_fullscreenQuadVAO;
 GLuint display_fullscreenQuadBuffer;
@@ -209,15 +215,24 @@ void showTrayMenu(HWND hWnd, POINT *curpos, int wDefaultItem) {
 
 	HMENU hPopup = CreatePopupMenu();
 
-	InsertMenu(hPopup, 0, MF_BYPOSITION | MF_STRING, TRAYMENU_SHOW, L"Show Window");
+	InsertMenu(hPopup, 0, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_0, L"Reset overlay rotation");
+	InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_90, L"Rotate overlay 90 degrees");
+	InsertMenu(hPopup, 2, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_180, L"Rotate overlay 180 degrees");
+	InsertMenu(hPopup, 3, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_270, L"Rotate overlay 270 degrees");
+	InsertMenu(hPopup, 4, MF_BYPOSITION | MF_STRING, TRAYMENU_OVERLAY_OPAQUE, L"Set overlay to be opaque");
+	InsertMenu(hPopup, 5, MF_BYPOSITION | MF_STRING, TRAYMENU_OVERLAY_TRANSPARENT, L"Set overlay to be transparent");
+
+	InsertMenu(hPopup, 6, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+
+	InsertMenu(hPopup, 7, MF_BYPOSITION | MF_STRING, TRAYMENU_SHOW, L"Show Window");
 
 	if (vrController->isManifestInstalled()) {
-		InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_REMOVE_MANIFEST, L"Unregister from SteamVR");
+		InsertMenu(hPopup, 8, MF_BYPOSITION | MF_STRING, TRAYMENU_REMOVE_MANIFEST, L"Unregister from SteamVR");
 	} else {
-		InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_INSTALL_MANIFEST, L"Register with SteamVR");
+		InsertMenu(hPopup, 8, MF_BYPOSITION | MF_STRING, TRAYMENU_INSTALL_MANIFEST, L"Register with SteamVR");
 	}
 
-	InsertMenu(hPopup, 2, MF_BYPOSITION | MF_STRING, TRAYMENU_EXIT, L"Exit");
+	InsertMenu(hPopup, 9, MF_BYPOSITION | MF_STRING, TRAYMENU_EXIT, L"Exit");
 
 	POINT pt;
 	if (!curpos) {
@@ -259,6 +274,24 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 					return 0;
 				case TRAYMENU_REMOVE_MANIFEST:
 					vrController->removeManifest();
+					return 0;
+				case TRAYMENU_ROTATE_0:
+					vrController->setOverlayRotation(0);
+					return 0;
+				case TRAYMENU_ROTATE_90:
+					vrController->setOverlayRotation(3);
+					return 0;
+				case TRAYMENU_ROTATE_180:
+					vrController->setOverlayRotation(2);
+					return 0;
+				case TRAYMENU_ROTATE_270:
+					vrController->setOverlayRotation(1);
+					return 0;
+				case TRAYMENU_OVERLAY_OPAQUE:
+					vrController->setOverlayAlpha(1.0f);
+					return 0;
+				case TRAYMENU_OVERLAY_TRANSPARENT:
+					vrController->setOverlayAlpha(0.5f);
 					return 0;
 			}
 			return 0;

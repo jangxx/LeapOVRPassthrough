@@ -17,7 +17,8 @@ OVROverlayController::OVROverlayController()
 	: m_eLastHmdError( vr::VRInitError_None ),
 	  m_eCompositorError ( vr::VRInitError_None ),
 	  m_eOverlayError( vr::VRInitError_None ),
-	  m_ulOverlayHandle( vr::k_ulOverlayHandleInvalid )
+	  m_ulOverlayHandle( vr::k_ulOverlayHandleInvalid ),
+	  m_rTrackedDevicePose()
 {
 }
 
@@ -48,17 +49,7 @@ bool OVROverlayController::init()
 			std::cout << "SetOverlayWidthInMeters error: " << err << std::endl;
 		}
 
-		vr::HmdMatrix34_t position = {
-			1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, -0.3f
-		};
-
-		err = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_ulOverlayHandle, 0, &position);
-
-		if (err != vr::VROverlayError_None) {
-			std::cout << "SetOverlayTransformAbsolute error: " << err << std::endl;
-		}
+		updateOverlayRotation();
 
 		std::cout << "Successfully created overlay" << std::endl;
 	} else {
@@ -130,6 +121,21 @@ void OVROverlayController::setTexture(GLuint id)
 
 	if (err != vr::VROverlayError_None) {
 		std::cout << "setTexture error: " << err << std::endl;
+	}
+}
+
+void OVROverlayController::setOverlayRotation(int rotation)
+{
+	m_overlayRotation = rotation;
+	updateOverlayRotation();
+}
+
+void OVROverlayController::setOverlayAlpha(float alpha)
+{
+	vr::VROverlayError err = vr::VROverlay()->SetOverlayAlpha(m_ulOverlayHandle, alpha);
+
+	if (err != vr::VROverlayError_None) {
+		std::cout << "SetOverlayAlpha error: " << err << std::endl;
 	}
 }
 
@@ -211,4 +217,47 @@ void OVROverlayController::disconnectFromVRRuntime()
 {
 	vr::VR_Shutdown();
 	m_connected = false;
+}
+
+void OVROverlayController::updateOverlayRotation()
+{
+	vr::HmdMatrix34_t position = createOverlayMatrix();
+
+	vr::VROverlayError err = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_ulOverlayHandle, 0, &position);
+
+	if (err != vr::VROverlayError_None) {
+		std::cout << "SetOverlayTransformAbsolute error: " << err << std::endl;
+	}
+}
+
+vr::HmdMatrix34_t OVROverlayController::createOverlayMatrix()
+{
+	float zDistance = 0.3f;
+
+	switch (m_overlayRotation) {
+	case 1:
+		return {
+			0.0f, -1.0f, 0.0f, 0.0f,
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, -zDistance
+		};
+	case 2:
+		return {
+			-1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, -1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, -zDistance
+		};
+	case 3:
+		return {
+			0.0f, 1.0f, 0.0f, 0.0f,
+			-1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, -zDistance
+		};
+	default:
+		return {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, -zDistance
+		};
+	}
 }

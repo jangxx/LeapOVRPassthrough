@@ -27,6 +27,8 @@ public:
 	void hideOverlay();
 	void toggleOverlay();
 	void setTexture(GLuint id);
+	void setOverlayRotation(int rotation);
+	void setOverlayAlpha(float alpha);
 
 	void installManifest();
 	void removeManifest();
@@ -39,8 +41,11 @@ public:
 private:
 	bool connectToVRRuntime();
 	void disconnectFromVRRuntime();
+	void updateOverlayRotation();
+	vr::HmdMatrix34_t createOverlayMatrix();
 
 	bool m_connected { false };
+	int m_overlayRotation{ 0 };
 	vr::IVRSystem* m_VRSystem { nullptr };
 
 	std::string m_strVRDriver { "No Driver" };

@@ -60,7 +60,8 @@ LeapHandler* LeapHandler::getInstance()
 
 LeapHandler::LeapHandler() :
 	m_brightUpperPixelsRingbuffer(std::vector<uint32_t>(50)),
-	m_lastSwipeDetected( steady_clock::now() )
+	m_lastSwipeDetected( steady_clock::now() ),
+	m_connection( nullptr )
 {
 }
 
