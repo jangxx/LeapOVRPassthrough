@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <chrono>
+#include <sstream> 
 
 #include "GraphicsManager.h"
 
@@ -38,6 +39,7 @@ private:
 	bool m_swipeDetected { false };
 
 	LEAP_CONNECTION m_connection;
+	uint64_t m_lastDistortionMatrixVersion { 0 };
 
 	std::vector<uint32_t> m_brightUpperPixelsRingbuffer;
 	uint32_t m_bupRBNextIndex { 0 };

@@ -173,6 +173,7 @@ xcopy /y $(ProjectDir)assets\manifest.vrmanifest $(OutDir)</Command>
     <ClInclude Include="OVROverlayController.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GraphicsManager.cpp" />
@@ -180,6 +181,7 @@ xcopy /y $(ProjectDir)assets\manifest.vrmanifest $(OutDir)</Command>
     <ClCompile Include="LeapOVRPassthrough.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="OVROverlayController.cpp" />
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LeapOVRPassthrough.rc" />

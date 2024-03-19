@@ -29,6 +29,7 @@ OVROverlayController::~OVROverlayController()
 
 bool OVROverlayController::init()
 {
+	std::stringstream output;
 	bool success = true;
 
 	success = connectToVRRuntime();
@@ -44,16 +45,13 @@ bool OVROverlayController::init()
 	}
 
 	if (success) {
-		vr::VROverlayError err = vr::VROverlay()->SetOverlayWidthInMeters(m_ulOverlayHandle, 0.5f);
-		if (err != vr::VROverlayError_None) {
-			std::cout << "SetOverlayWidthInMeters error: " << err << std::endl;
-		}
+		updateOverlaySizeAndPosition();
 
-		updateOverlayRotation();
-
-		std::cout << "Successfully created overlay" << std::endl;
+		output << "Successfully created overlay" << std::endl;
+		outputStringStream(output);
 	} else {
-		std::cout << "Error creating overlay" << std::endl;
+		output << "Error creating overlay" << std::endl;
+		outputStringStream(output);
 	}
 
 	return true;
@@ -88,7 +86,9 @@ void OVROverlayController::showOverlay()
 	vr::VROverlayError err = vr::VROverlay()->ShowOverlay(m_ulOverlayHandle);
 
 	if (err != vr::VROverlayError_None) {
-		std::cout << "showOverlay error: " << err << std::endl;
+		std::stringstream output;
+		output << "showOverlay error: " << err << std::endl;
+		outputStringStream(output);
 	}
 }
 
@@ -97,7 +97,9 @@ void OVROverlayController::hideOverlay()
 	vr::VROverlayError err = vr::VROverlay()->HideOverlay(m_ulOverlayHandle);
 
 	if (err != vr::VROverlayError_None) {
-		std::cout << "hideOverlay error: " << err << std::endl;
+		std::stringstream output;
+		output << "hideOverlay error: " << err << std::endl;
+		outputStringStream(output);
 	}
 }
 
@@ -120,14 +122,16 @@ void OVROverlayController::setTexture(GLuint id)
 	vr::VROverlayError err = vr::VROverlay()->SetOverlayTexture(m_ulOverlayHandle, &texture);
 
 	if (err != vr::VROverlayError_None) {
-		std::cout << "setTexture error: " << err << std::endl;
+		std::stringstream output;
+		output << "setTexture error: " << err << std::endl;
+		outputStringStream(output);
 	}
 }
 
 void OVROverlayController::setOverlayRotation(int rotation)
 {
 	m_overlayRotation = rotation;
-	updateOverlayRotation();
+	updateOverlaySizeAndPosition();
 }
 
 void OVROverlayController::setOverlayAlpha(float alpha)
@@ -135,20 +139,48 @@ void OVROverlayController::setOverlayAlpha(float alpha)
 	vr::VROverlayError err = vr::VROverlay()->SetOverlayAlpha(m_ulOverlayHandle, alpha);
 
 	if (err != vr::VROverlayError_None) {
-		std::cout << "SetOverlayAlpha error: " << err << std::endl;
+		std::stringstream output;
+		output << "SetOverlayAlpha error: " << err << std::endl;
+		outputStringStream(output);
 	}
+}
+
+void OVROverlayController::setOverlayWidth(float width)
+{
+	m_overlayWidth = width;
+	updateOverlaySizeAndPosition();
+}
+
+float OVROverlayController::getOverlayWidth()
+{
+	return m_overlayWidth;
+}
+
+void OVROverlayController::setOverlayDistance(float zDistance)
+{
+	m_overlayZDistance = zDistance;
+	updateOverlaySizeAndPosition();
+}
+
+float OVROverlayController::getOverlayDistance()
+{
+	return m_overlayZDistance;
 }
 
 void OVROverlayController::installManifest()
 {
+	std::stringstream output;
+
 	if (!isManifestInstalled()) {
-		std::cout << "Installing manifest" << std::endl;
+		output << "Installing manifest" << std::endl;
+		outputStringStream(output);
 
 		std::filesystem::path manifest_path = std::filesystem::current_path() / "manifest.vrmanifest";
 
 		vr::EVRApplicationError err = vr::VRApplications()->AddApplicationManifest(manifest_path.string().c_str());
 		if (err != vr::VRApplicationError_None) {
-			std::cout << "Error while adding manifest: " << vr::VRApplications()->GetApplicationsErrorNameFromEnum(err) << std::endl;
+			output << "Error while adding manifest: " << vr::VRApplications()->GetApplicationsErrorNameFromEnum(err) << std::endl;
+			outputStringStream(output);
 			MessageBox(NULL, L"Manifest installation failed!", L"Leap Motion Overlay", MB_OK | MB_ICONERROR);
 		} else {
 			MessageBox(NULL, L"Application successfully registered!", L"Leap Motion Overlay", MB_OK | MB_ICONINFORMATION);
@@ -158,8 +190,11 @@ void OVROverlayController::installManifest()
 
 void OVROverlayController::removeManifest()
 {
+	std::stringstream output;
+
 	if (isManifestInstalled()) {
-		std::cout << "Removing manifest" << std::endl;
+		output << "Removing manifest" << std::endl;
+		outputStringStream(output);
 
 		//vr::EVRApplicationProperpty
 
@@ -171,7 +206,8 @@ void OVROverlayController::removeManifest()
 
 		vr::EVRApplicationError err = vr::VRApplications()->RemoveApplicationManifest(manifest_path.string().c_str());
 		if (err != vr::VRApplicationError_None) {
-			std::cout << "Error while removing manifest: " << vr::VRApplications()->GetApplicationsErrorNameFromEnum(err) << std::endl;
+			output << "Error while removing manifest: " << vr::VRApplications()->GetApplicationsErrorNameFromEnum(err) << std::endl;
+			outputStringStream(output);
 			MessageBox(NULL, L"Manifest removal failed!", L"Leap Motion Overlay", MB_OK | MB_ICONERROR);
 		} else {
 			MessageBox(NULL, L"Application successfully unregistered!", L"Leap Motion Overlay", MB_OK | MB_ICONINFORMATION);
@@ -219,21 +255,27 @@ void OVROverlayController::disconnectFromVRRuntime()
 	m_connected = false;
 }
 
-void OVROverlayController::updateOverlayRotation()
+void OVROverlayController::updateOverlaySizeAndPosition()
 {
-	vr::HmdMatrix34_t position = createOverlayMatrix();
+	std::stringstream output;
 
-	vr::VROverlayError err = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_ulOverlayHandle, 0, &position);
+	vr::VROverlayError err = vr::VROverlay()->SetOverlayWidthInMeters(m_ulOverlayHandle, m_overlayWidth);
+	if (err != vr::VROverlayError_None) {
+		output << "SetOverlayWidthInMeters error: " << err << std::endl;
+		outputStringStream(output);
+	}
+
+	vr::HmdMatrix34_t position = createOverlayMatrix(m_overlayZDistance);
+	err = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(m_ulOverlayHandle, 0, &position);
 
 	if (err != vr::VROverlayError_None) {
-		std::cout << "SetOverlayTransformAbsolute error: " << err << std::endl;
+		output << "SetOverlayTransformAbsolute error: " << err << std::endl;
+		outputStringStream(output);
 	}
 }
 
-vr::HmdMatrix34_t OVROverlayController::createOverlayMatrix()
+vr::HmdMatrix34_t OVROverlayController::createOverlayMatrix(float zDistance)
 {
-	float zDistance = 0.3f;
-
 	switch (m_overlayRotation) {
 	case 1:
 		return {

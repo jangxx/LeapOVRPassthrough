@@ -14,6 +14,7 @@
 #include "LeapHandler.h"
 #include "OVROverlayController.h"
 #include "GraphicsManager.h"
+#include "utils.h"
 
 #define TRAYMENU_EXIT 1
 #define TRAYMENU_SHOW 2
@@ -25,6 +26,8 @@
 #define TRAYMENU_ROTATE_270 8
 #define TRAYMENU_OVERLAY_OPAQUE 9
 #define TRAYMENU_OVERLAY_TRANSPARENT 10
+#define TRAYMENU_TOGGLE_DISTORTION_MAP 11
+#define TRAYMENU_TOGGLE_WIDTH 12
 
 GLuint display_fullscreenQuadVAO;
 GLuint display_fullscreenQuadBuffer;
@@ -61,7 +64,8 @@ uniform sampler2D textureSampler;
 in vec2 vUv;
 
 void main() {
-	diffuseColor = texture( textureSampler, vec2(vUv.x, vUv.y)).rgb;
+	//diffuseColor = vec4(texture( textureSampler, vec2(vUv.x, vUv.y)).rgb, 1);
+	diffuseColor = texture( textureSampler, vec2(vUv.x, vUv.y));
 }
 )""";
 const GLint display_fragmentShaderCodeLength = strlen(display_fragmentShaderCode);
@@ -111,6 +115,7 @@ GLFWimage loadResource(HINSTANCE hInstance, int id) {
 void display_init() {
 	GLint Result = GL_FALSE;
 	int InfoLogLength;
+	std::stringstream output;
 
 	display_vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(display_vertexShader, 1, &display_vertexShaderCode, (GLint*)&display_vertexShaderCodeLength);
@@ -121,7 +126,9 @@ void display_init() {
 	if (InfoLogLength > 0) {
 		std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
 		glGetShaderInfoLog(display_vertexShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-		printf("%s\n", &VertexShaderErrorMessage[0]);
+
+		output << &VertexShaderErrorMessage[0];
+		outputStringStream(output);
 	}
 
 	display_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -131,9 +138,11 @@ void display_init() {
 	glGetShaderiv(display_fragmentShader, GL_COMPILE_STATUS, &Result);
 	glGetShaderiv(display_fragmentShader, GL_INFO_LOG_LENGTH, &InfoLogLength);
 	if (InfoLogLength > 0) {
-		std::vector<char> VertexShaderErrorMessage(InfoLogLength + 1);
-		glGetShaderInfoLog(display_fragmentShader, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-		printf("%s\n", &VertexShaderErrorMessage[0]);
+		std::vector<char> FragmentShaderErrorMessage(InfoLogLength + 1);
+		glGetShaderInfoLog(display_fragmentShader, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
+
+		output << &FragmentShaderErrorMessage[0];
+		outputStringStream(output);
 	}
 
 	display_shaderProgram = glCreateProgram();
@@ -147,7 +156,9 @@ void display_init() {
 	if (InfoLogLength > 0) {
 		std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
 		glGetProgramInfoLog(display_shaderProgram, InfoLogLength, NULL, &ProgramErrorMessage[0]);
-		printf("%s\n", &ProgramErrorMessage[0]);
+
+		output << &ProgramErrorMessage[0];
+		outputStringStream(output);
 	}
 
 	display_textureSamplerID = glGetUniformLocation(display_shaderProgram, "textureSampler");
@@ -214,25 +225,28 @@ void showTrayMenu(HWND hWnd, POINT *curpos, int wDefaultItem) {
 	OVROverlayController* vrController = OVROverlayController::getInstance();
 
 	HMENU hPopup = CreatePopupMenu();
+	uint32_t pos = 0;
 
-	InsertMenu(hPopup, 0, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_0, L"Reset overlay rotation");
-	InsertMenu(hPopup, 1, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_90, L"Rotate overlay 90 degrees");
-	InsertMenu(hPopup, 2, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_180, L"Rotate overlay 180 degrees");
-	InsertMenu(hPopup, 3, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_270, L"Rotate overlay 270 degrees");
-	InsertMenu(hPopup, 4, MF_BYPOSITION | MF_STRING, TRAYMENU_OVERLAY_OPAQUE, L"Set overlay to be opaque");
-	InsertMenu(hPopup, 5, MF_BYPOSITION | MF_STRING, TRAYMENU_OVERLAY_TRANSPARENT, L"Set overlay to be transparent");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_0, L"Reset overlay rotation");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_90, L"Rotate overlay 90 degrees");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_180, L"Rotate overlay 180 degrees");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_ROTATE_270, L"Rotate overlay 270 degrees");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_OVERLAY_OPAQUE, L"Set overlay to be opaque");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_OVERLAY_TRANSPARENT, L"Set overlay to be transparent");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_TOGGLE_DISTORTION_MAP, L"Toggle distortion correction");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_TOGGLE_WIDTH, L"Toggle smaller overlay");
 
-	InsertMenu(hPopup, 6, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
 
-	InsertMenu(hPopup, 7, MF_BYPOSITION | MF_STRING, TRAYMENU_SHOW, L"Show Window");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_SHOW, L"Show Window");
 
 	if (vrController->isManifestInstalled()) {
-		InsertMenu(hPopup, 8, MF_BYPOSITION | MF_STRING, TRAYMENU_REMOVE_MANIFEST, L"Unregister from SteamVR");
+		InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_REMOVE_MANIFEST, L"Unregister from SteamVR");
 	} else {
-		InsertMenu(hPopup, 8, MF_BYPOSITION | MF_STRING, TRAYMENU_INSTALL_MANIFEST, L"Register with SteamVR");
+		InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_INSTALL_MANIFEST, L"Register with SteamVR");
 	}
 
-	InsertMenu(hPopup, 9, MF_BYPOSITION | MF_STRING, TRAYMENU_EXIT, L"Exit");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_EXIT, L"Exit");
 
 	POINT pt;
 	if (!curpos) {
@@ -248,6 +262,7 @@ void showTrayMenu(HWND hWnd, POINT *curpos, int wDefaultItem) {
 
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
 	OVROverlayController* vrController = OVROverlayController::getInstance();
+	GraphicsManager* graphicsManager = GraphicsManager::getInstance();
 
 	switch (uMsg) {
 		case WM_APP:
@@ -293,6 +308,14 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				case TRAYMENU_OVERLAY_TRANSPARENT:
 					vrController->setOverlayAlpha(0.5f);
 					return 0;
+				case TRAYMENU_TOGGLE_DISTORTION_MAP:
+					graphicsManager->setDistortionMapActive(!graphicsManager->getDistortionMapActive());
+					return 0;
+				case TRAYMENU_TOGGLE_WIDTH: {
+					float currentWidth = vrController->getOverlayWidth();
+					vrController->setOverlayWidth((currentWidth > 0.4) ? 0.3 : 0.5);
+					return 0;
+				}
 			}
 			return 0;
 		case WM_NCDESTROY:
@@ -308,11 +331,15 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	LPSTR /*lpCmdLine*/,
 	int /*cmdShow*/)
 {
+	std::stringstream msg;
+
 	if (!glfwInit()) {
 		MessageBox(NULL, L"GLFW failed to initialize!", L"Leap Motion SteamVR Overlay", MB_OK | MB_ICONERROR);
-		std::cerr << "GLFW failed to initialize!" << std::endl;
+		msg << "GLFW failed to initialize!" << std::endl;
+		outputStringStream(msg);
 		return 1;
 	}
+	
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -331,11 +358,13 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	GLenum err = glewInit();
 	if (err != GLEW_OK) {
 		MessageBox(NULL, L"GLEW failed to initialize!", L"Leap Motion SteamVR Overlay", MB_OK | MB_ICONERROR);
-		std::cerr << "glewInit Error: " << glewGetErrorString(err) << std::endl;
+		msg << "glewInit Error: " << glewGetErrorString(err) << std::endl;
+		outputStringStream(msg);
 		return 1;
 	}
 
-	std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
+	msg << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
+	outputStringStream(msg);
 
 	OVROverlayController* vrController = OVROverlayController::getInstance();
 	LeapHandler* leapHandler = LeapHandler::getInstance();
@@ -343,7 +372,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
 	if (!graphicsManager->init()) {
 		MessageBox(NULL, L"GraphicsManager failed to initialize!", L"Leap Motion SteamVR Overlay", MB_OK | MB_ICONERROR);
-		std::cerr << "Graphics Manager initialization failed!" << std::endl;
+		msg << "Graphics Manager initialization failed!" << std::endl;
+		outputStringStream(msg);
 		return 1;
 	}
 

@@ -6,8 +6,8 @@
 #include <iostream>
 #include <filesystem>
 
-#define FRAMEBUFFER_WIDTH 640
-#define FRAMEBUFFER_HEIGHT 480
+#include "utils.h"
+
 
 class OVROverlayController
 {
@@ -29,6 +29,10 @@ public:
 	void setTexture(GLuint id);
 	void setOverlayRotation(int rotation);
 	void setOverlayAlpha(float alpha);
+	void setOverlayWidth(float width);
+	float getOverlayWidth();
+	void setOverlayDistance(float zDistance);
+	float getOverlayDistance();
 
 	void installManifest();
 	void removeManifest();
@@ -41,11 +45,13 @@ public:
 private:
 	bool connectToVRRuntime();
 	void disconnectFromVRRuntime();
-	void updateOverlayRotation();
-	vr::HmdMatrix34_t createOverlayMatrix();
+	void updateOverlaySizeAndPosition();
+	vr::HmdMatrix34_t createOverlayMatrix(float zDistance);
 
 	bool m_connected { false };
 	int m_overlayRotation{ 0 };
+	float m_overlayWidth{ 0.5f };
+	float m_overlayZDistance{ 0.3f };
 	vr::IVRSystem* m_VRSystem { nullptr };
 
 	std::string m_strVRDriver { "No Driver" };

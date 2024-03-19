@@ -1,4 +1,5 @@
 #include "LeapHandler.h"
+#include "utils.h"
 
 std::map<eLeapRS, std::string> errorMap = {
 	{ eLeapRS_Success, "Success" },
@@ -44,7 +45,9 @@ std::map<eLeapEventType, std::string> eventMsgMap = {
 };
 
 void printLeapRSError(eLeapRS result) {
-	std::cout << "LeapC Error: " << errorMap[result] << " " << result << std::endl;
+	std::stringstream output;
+	output << "LeapC Error: " << errorMap[result] << " " << result << std::endl;
+	outputStringStream(output);
 }
 
 LeapHandler* s_sharedInstance = nullptr;
@@ -133,6 +136,7 @@ void LeapHandler::pollController()
 {
 	eLeapRS result;
 	LEAP_CONNECTION_MESSAGE msg;
+	std::stringstream output;
 
 	while (m_started) {
 		result = LeapPollConnection(m_connection, 1000, &msg);
@@ -148,7 +152,8 @@ void LeapHandler::pollController()
 				for (uint32_t i = 0; i < events->nEvents; i++) {
 					LEAP_LOG_EVENT evt = events->events[i];
 
-					std::cout << "[" << evt.timestamp << "] " << evt.message << std::endl;
+					output << "[" << evt.timestamp << "] " << evt.message << std::endl;
+					outputStringStream(output);
 				}
 
 				break;
@@ -157,8 +162,8 @@ void LeapHandler::pollController()
 			{
 				const LEAP_LOG_EVENT* evt = msg.log_event;
 			
-				std::cout << "[" << evt->timestamp << "] " << evt->message << std::endl;
-
+				output << "[" << evt->timestamp << "] " << evt->message << std::endl;
+				outputStringStream(output);
 				break;
 			}
 			case eLeapEventType_Image: 
@@ -178,6 +183,12 @@ void LeapHandler::pollController()
 				}
 
 				graphicsManager->setFrame(evt->image[0].properties.width, evt->image[0].properties.height, (uint8_t*)evt->image[0].data + evt->image[0].offset);
+
+				if (evt->image[0].matrix_version != m_lastDistortionMatrixVersion) {
+					m_lastDistortionMatrixVersion = evt->image[0].matrix_version;
+					graphicsManager->setDistortionMap((float*)evt->image[0].distortion_matrix);
+				}
+
 				break;
 			}
 		}

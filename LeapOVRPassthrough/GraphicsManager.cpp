@@ -21,11 +21,28 @@ const char* fragmentShaderCode = R"""(
 layout(location = 0) out vec4 diffuseColor;
 
 uniform sampler2D textureSampler;
+uniform sampler2D distortionTextureSampler;
+uniform bool useDistortionMap; 
 
 in vec2 vUv;
 
 void main() {
-	diffuseColor = vec4(texture( textureSampler, vec2(vUv.x, 1 - vUv.y)).rrr, 1);
+	if (useDistortionMap) {
+		vec2 uv = vUv;
+		vec2 distortionIndex = texture2D(distortionTextureSampler, uv).xy;
+
+		float hIndex = distortionIndex.x;
+		float vIndex = distortionIndex.y;
+
+		if (vIndex > 0.0 && vIndex < 1.0 && hIndex > 0.0 && hIndex < 1.0) {
+			diffuseColor = vec4(texture(textureSampler, distortionIndex).rrr, 1);
+		} else {
+			diffuseColor = vec4(0.2, 0.0, 0.0, 0.0);
+		}
+	} else {
+		vec2 uv = vec2(vUv.x, 1 - vUv.y);
+		diffuseColor = vec4(texture( textureSampler, uv).rrr, 1);
+	}
 }
 )""";
 const GLint fragmentShaderCodeLength = strlen(fragmentShaderCode);
@@ -57,9 +74,14 @@ bool checkShader(GLuint id) {
 	glGetShaderiv(id, GL_COMPILE_STATUS, &result);
 	glGetShaderiv(id, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if (infoLogLength > 0) {
-		std::vector<char> VertexShaderErrorMessage(infoLogLength + 1);
-		glGetShaderInfoLog(id, infoLogLength, NULL, &VertexShaderErrorMessage[0]);
-		std::cout << &VertexShaderErrorMessage[0] << std::endl;
+		std::vector<char> shaderErrorMessage(infoLogLength + 1);
+		std::vector<wchar_t> shaderErrorMessageW(infoLogLength + 1);
+
+		glGetShaderInfoLog(id, infoLogLength, NULL, &shaderErrorMessage[0]);
+
+		size_t convertedChars = 0;
+		mbstowcs_s(&convertedChars, &shaderErrorMessageW[0], shaderErrorMessageW.size(), &shaderErrorMessage[0], shaderErrorMessage.size() - 1);
+		OutputDebugString(&shaderErrorMessageW[0]);
 	}
 
 	return infoLogLength == 0;
@@ -72,9 +94,14 @@ bool checkProgram(GLuint id) {
 	glGetProgramiv(id, GL_COMPILE_STATUS, &result);
 	glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if (infoLogLength > 0) {
-		std::vector<char> VertexShaderErrorMessage(infoLogLength + 1);
-		glGetShaderInfoLog(id, infoLogLength, NULL, &VertexShaderErrorMessage[0]);
-		std::cout << &VertexShaderErrorMessage[0] << std::endl;
+		std::vector<char> shaderErrorMessage(infoLogLength + 1);
+		std::vector<wchar_t> shaderErrorMessageW(infoLogLength + 1);
+
+		glGetShaderInfoLog(id, infoLogLength, NULL, &shaderErrorMessage[0]);
+
+		size_t convertedChars = 0;
+		mbstowcs_s(&convertedChars, &shaderErrorMessageW[0], shaderErrorMessageW.size(), &shaderErrorMessage[0], shaderErrorMessage.size() - 1);
+		OutputDebugString(&shaderErrorMessageW[0]);
 	}
 
 	return infoLogLength == 0;
@@ -92,12 +119,14 @@ GraphicsManager * GraphicsManager::getInstance()
 
 GraphicsManager::GraphicsManager()
 {
-	m_pixelData = (uint8_t*)malloc(m_width * m_height);
+	m_pixelData = (uint8_t*)malloc(m_width * m_height * sizeof(uint8_t));
+	m_distortionPixelData = (float*)malloc(LEAP_DISTORTION_MATRIX_N * LEAP_DISTORTION_MATRIX_N * 2 * sizeof(float));
 }
 
 GraphicsManager::~GraphicsManager()
 {
 	free(m_pixelData);
+	free(m_distortionPixelData);
 }
 
 bool GraphicsManager::init()
@@ -125,6 +154,8 @@ bool GraphicsManager::init()
 	if (!checkProgram(m_shaderProgram)) return false;
 
 	m_textureSamplerID = glGetUniformLocation(m_shaderProgram, "textureSampler");
+	m_distortionTextureSamplerID = glGetUniformLocation(m_shaderProgram, "distortionTextureSampler");
+	m_useDistortionMapID = glGetUniformLocation(m_shaderProgram, "useDistortionMap");
 
 	glGenVertexArrays(1, &m_fullscreenQuadVAO);
 	glBindVertexArray(m_fullscreenQuadVAO);
@@ -143,7 +174,7 @@ bool GraphicsManager::init()
 
 	glGenTextures(1, &m_framebufferTexture);
 	glBindTexture(GL_TEXTURE_2D, m_framebufferTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_fbWidth, m_fbHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
@@ -156,17 +187,26 @@ bool GraphicsManager::init()
 	}
 
 	// generate a dummy initial video texture
-	m_pixelData = (uint8_t*)malloc(100 * 100);
-	for (int i = 0; i < 100 * 100; i++) {
+	for (int i = 0; i < m_width * m_height; i++) {
 		m_pixelData[i] = 255;
+	}
+	for (int i = 0; i < LEAP_DISTORTION_MATRIX_N * LEAP_DISTORTION_MATRIX_N * 2; i++) {
+		m_distortionPixelData[i] = 0.5f;
 	}
 
 	glGenTextures(1, &m_videoTexture);
 	glBindTexture(GL_TEXTURE_2D, m_videoTexture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, m_pixelData);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 100, 100, 0, GL_RED, GL_UNSIGNED_BYTE, m_pixelData);
+	glGenTextures(1, &m_distortionTexture);
+	glBindTexture(GL_TEXTURE_2D, m_distortionTexture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, LEAP_DISTORTION_MATRIX_N, LEAP_DISTORTION_MATRIX_N, 0, GL_RG, GL_FLOAT, m_distortionPixelData);
 
 	updateFramebuffer();
 
@@ -182,21 +222,32 @@ void GraphicsManager::updateTexture()
 	}
 
 	if (m_dimensionsChanged) { // re-gen texture
-		glDeleteTextures(1, &m_videoTexture);
-		glGenTextures(1, &m_videoTexture);
+		//glDeleteTextures(1, &m_videoTexture);
+		//glGenTextures(1, &m_videoTexture);
+
+		//glBindTexture(GL_TEXTURE_2D, m_videoTexture);
+
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		glBindTexture(GL_TEXTURE_2D, m_videoTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, m_pixelData);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, m_framebufferTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_fbWidth, m_fbHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	} else {
 		glBindTexture(GL_TEXTURE_2D, m_videoTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, GL_RED, GL_UNSIGNED_BYTE, m_pixelData);
 	}
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, m_pixelData);
+	if (m_distortionMapChanged) {
+		glBindTexture(GL_TEXTURE_2D, m_distortionTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, LEAP_DISTORTION_MATRIX_N, LEAP_DISTORTION_MATRIX_N, GL_RG, GL_FLOAT, m_distortionPixelData);
+	}
 
 	m_wasUpdated = true;
 	m_dimensionsChanged = false;
+	m_distortionMapChanged = false;
 	m_frameChanged = false;
 
 	updateFramebuffer();
@@ -223,7 +274,34 @@ void GraphicsManager::setFrame(int width, int height, uint8_t* data)
 		m_pixelData = (uint8_t*)malloc(m_width * m_height);
 	}
 
+	assert(m_pixelData != nullptr); 
+
 	memcpy(m_pixelData, data, m_width * m_height);
+}
+
+void GraphicsManager::setDistortionMap(float* data)
+{
+	std::lock_guard<std::mutex> lock(m_updateMutex);
+
+	m_distortionMapChanged = true;
+
+	OutputDebugString(L"Distortion map changed\n");
+
+	memcpy(m_distortionPixelData, data, LEAP_DISTORTION_MATRIX_N * LEAP_DISTORTION_MATRIX_N * 2 * sizeof(float));
+}
+
+void GraphicsManager::setDistortionMapActive(bool active)
+{
+	std::lock_guard<std::mutex> lock(m_updateMutex);
+
+	m_useDistortionMap = active;
+}
+
+bool GraphicsManager::getDistortionMapActive()
+{
+	std::lock_guard<std::mutex> lock(m_updateMutex);
+
+	return m_useDistortionMap;
 }
 
 GLuint GraphicsManager::getVideoTexture()
@@ -240,15 +318,23 @@ bool GraphicsManager::wasUpdated()
 void GraphicsManager::updateFramebuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
-	glViewport(0, 0, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT);
+	glViewport(0, 0, m_fbWidth, m_fbHeight);
 
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(m_shaderProgram);
 
 	glActiveTexture(GL_TEXTURE0);
-	glUniform1i(m_textureSamplerID, 0);
+	glBindTexture(GL_TEXTURE_2D, m_videoTexture);
+	glUniform1i(m_textureSamplerID, 0); // set the sampler to use texture unit 0
 	glBindTexture(GL_TEXTURE0, m_videoTexture);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_distortionTexture);
+	glUniform1i(m_distortionTextureSamplerID, 1); // set the distortion sampler to use texture unit 0
+	glBindTexture(GL_TEXTURE1, m_distortionTexture);
+
+	glUniform1i(m_useDistortionMapID, m_useDistortionMap);
 
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, m_fullscreenQuadBuffer);
@@ -264,4 +350,14 @@ void GraphicsManager::updateFramebuffer()
 
 	glEnd();
 	glFlush();
+}
+
+void GraphicsManager::setFramebufferSize(int width, int height)
+{
+	std::lock_guard<std::mutex> lock(m_updateMutex);
+
+	m_fbWidth = width;
+	m_fbHeight = height;
+
+	m_dimensionsChanged = true;
 }
