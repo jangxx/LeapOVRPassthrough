@@ -28,6 +28,7 @@
 #define TRAYMENU_OVERLAY_TRANSPARENT 10
 #define TRAYMENU_TOGGLE_DISTORTION_MAP 11
 #define TRAYMENU_TOGGLE_WIDTH 12
+#define TRAYMENU_SET_FULL_VIEW 13
 
 GLuint display_fullscreenQuadVAO;
 GLuint display_fullscreenQuadBuffer;
@@ -235,6 +236,7 @@ void showTrayMenu(HWND hWnd, POINT *curpos, int wDefaultItem) {
 	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_OVERLAY_TRANSPARENT, L"Set overlay to be transparent");
 	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_TOGGLE_DISTORTION_MAP, L"Toggle distortion correction");
 	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_TOGGLE_WIDTH, L"Toggle smaller overlay");
+	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_STRING, TRAYMENU_SET_FULL_VIEW, L"Set overlay to cover entire screen");
 
 	InsertMenu(hPopup, pos++, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
 
@@ -314,6 +316,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				case TRAYMENU_TOGGLE_WIDTH: {
 					float currentWidth = vrController->getOverlayWidth();
 					vrController->setOverlayWidth((currentWidth > 0.4) ? 0.3 : 0.5);
+					return 0;
+				}
+				case TRAYMENU_SET_FULL_VIEW: {
+					vrController->setOverlayWidth(1.0);
 					return 0;
 				}
 			}
